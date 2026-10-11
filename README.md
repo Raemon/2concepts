@@ -11,6 +11,11 @@ A small game built around two concepts, and the third concept that appears when 
 - **Certified collapse (emergent).** Put the two together and the check is easiest to pass *past the fold*. The
   quiet, wilting flower gets certified, sealed under glass, and dies there.
 
+![The wilting flower's smoke shows it was wide open; now it is closing on its own](docs/screenshots/smoke.png)
+![Watered, it springs open: it was wilting](docs/screenshots/revive.png)
+![The Owl certifies a calm flower and seals it under glass](docs/screenshots/glass.png)
+![Certified collapse: a wilting flower passed inspection and died under glass](docs/screenshots/collapse.png)
+
 **Play it:** open [`dist/hush.html`](dist/hush.html). It's one self-contained file and works as a LessWrong post
 widget: sandboxed iframe, 340–700 px wide, auto height, no scroll trapping.
 

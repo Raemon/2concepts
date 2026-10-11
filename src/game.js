@@ -55,7 +55,7 @@
     view = {
       level, state, flowers, breathT: 0, running: false, effects: [], dawn: 0,
       owl: { mode: 'idle', target: -1, gaze: null, selected: false, returnT: null, inspectT: null, flyT0: 0, flyT1: 1, drag: null },
-      breathMs: opts.breathMs || (level.owl ? 950 : 880), endAt: null, outcome: null,
+      breathMs: opts.breathMs || (level.owl ? 920 : 840), endAt: null, outcome: null,
       labels: (level.labels || []).map(l => Object.assign({ t0: now() + 0.3, gone: null }, l)), streak: 0,
     };
     const up = H.upcoming(level, state, 3);
@@ -368,6 +368,11 @@
     if (e.key === ' ') { e.preventDefault(); if (!view.running) ensureRunning(); else paused = !paused; }
   });
 
+  ui.result.addEventListener('click', e => {
+    if (e.target.closest('button') || e.target === ui.share) return;
+    const primary = ui.rButtons.querySelector('button.primary');
+    if (primary) primary.click();
+  });
   $('playBtn').addEventListener('click', e => {
     e.stopPropagation(); A.unlock(); canvas.click();
     const first = LEVELS.find(l => !progress[l.id]) || LEVELS[0];
@@ -422,7 +427,10 @@
       // ease displayed bloom toward truth
       view.state.flowers.forEach((lf, i) => {
         const f = view.flowers[i], target = lf.alive ? H.bloomFrac(lf.kind, lf.t) : 0;
-        f.shown += (target - f.shown) * Math.min(1, dt * 7);
+        // a little spring so petals settle with a bounce
+        f.vel = (f.vel || 0) + (target - f.shown) * dt * 90;
+        f.vel *= Math.pow(0.0009, dt);
+        f.shown = Math.max(0, Math.min(1.08, f.shown + f.vel * dt));
       });
       if (view.outcome === 'won') view.dawn = Math.min(1, (t - view.endAt) / 1.3);
       view.effects = view.effects.filter(e => t - e.t0 < e.dur + 0.1);

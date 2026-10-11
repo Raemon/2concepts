@@ -79,8 +79,18 @@
       halo.addColorStop(0, rgba([230, 232, 255], 0.22 * (1 - dawn * 0.7)));
       halo.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(mx, my, mr * 5, 0, 6.283); ctx.fill();
-      ctx.fillStyle = rgba([236, 238, 255], 0.92 - dawn * 0.5); ctx.beginPath(); ctx.arc(mx, my, mr, 0, 6.283); ctx.fill();
-      ctx.fillStyle = rgba(mix(PAL.skyTop, PAL.dawnTop, dawn), 0.9); ctx.beginPath(); ctx.arc(mx + mr * 0.42, my - mr * 0.18, mr * 0.9, 0, 6.283); ctx.fill();
+      {
+        // crescent: the outer disc minus an offset disc, traced along both arcs
+        const bx = mx + mr * 0.42, by = my - mr * 0.18, br = mr * 0.9;
+        const d = Math.hypot(bx - mx, by - my), a = Math.atan2(by - my, bx - mx);
+        const cosA = (mr * mr + d * d - br * br) / (2 * mr * d), alpha = Math.acos(clamp(cosA, -1, 1));
+        const cosB = (br * br + d * d - mr * mr) / (2 * br * d), beta = Math.acos(clamp(cosB, -1, 1));
+        ctx.fillStyle = rgba([236, 238, 255], 0.92 - dawn * 0.5);
+        ctx.beginPath();
+        ctx.arc(mx, my, mr, a + alpha, a - alpha + 6.283);
+        ctx.arc(bx, by, br, a + Math.PI + beta, a + Math.PI - beta, true);
+        ctx.closePath(); ctx.fill();
+      }
       // ink hills
       for (let k = 0; k < 3; k++) {
         ctx.fillStyle = rgba(mix([20, 24, 52], [120, 92, 120], dawn), 0.35 + k * 0.12);
@@ -141,7 +151,7 @@
         pts.push({ x: x0 + sway, y, s, age });
       }
       if (pts.length < 2) return;
-      const fadeTop = a => clamp(1 - (a - span + 3) / 4, 0, 1);
+      const fadeTop = a => clamp(1 - (a - span + 6) / 6, 0, 1);
       // Smooth the samples (Catmull-Rom) and draw the thread as a ribbon whose width follows the bloom.
       const dense = [];
       for (let k = 0; k < pts.length - 1; k++) {
@@ -178,9 +188,10 @@
         if (blur && ctx.filter !== undefined) ctx.filter = 'none';
       };
       const ws = L.u * 0.3;
-      ribbon(d => (4 + d.o * 22 + d.age * 0.5) * ws, d => 0.10 + 0.20 * d.o, Math.max(2, L.u * 0.9));
-      ribbon(d => (1.2 + d.o * 9) * ws, d => 0.38 + 0.55 * d.o, 0);
-      ribbon(d => (0.5 + d.o * 2.5) * ws, d => 0.25 + 0.5 * d.o, 0);
+      const taper = d => 0.35 + 0.65 * fadeTop(d.age);
+      ribbon(d => (4 + d.o * 22 + d.age * 0.5) * ws * taper(d), d => 0.10 + 0.20 * d.o, Math.max(2, L.u * 0.9));
+      ribbon(d => (1.2 + d.o * 9) * ws * taper(d), d => 0.38 + 0.55 * d.o, 0);
+      ribbon(d => (0.5 + d.o * 2.5) * ws * taper(d), d => 0.25 + 0.5 * d.o, 0);
       // marks on the thread: water beads, gusts, inspections
       for (const p of pts) {
         if (p.s.fog) continue;
@@ -241,15 +252,16 @@
     }
 
     function head(hx, hy, r, f, t) {
-      const o = f.shown;                          // displayed openness 0..1
+      const o = clamp(f.shown, 0, 1.08);          // displayed openness (springs slightly past 1)
+      const oc = Math.min(1, o);
       const dead = f.deadT != null;
       const fold = f.kind === 'fold';
       const petals = fold ? 7 : 13;
-      const col = dead ? [96, 96, 104] : mix(fold ? PAL.pale : [214, 214, 196], PAL.accent, o);
+      const col = dead ? [96, 96, 104] : mix(fold ? PAL.pale : [214, 214, 196], PAL.accent, oc);
       // glow
       if (!dead && o > 0.05) {
         const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, r * (1.2 + o * 1.4));
-        g.addColorStop(0, rgba(PAL.accent, 0.28 * o)); g.addColorStop(1, 'rgba(0,0,0,0)');
+        g.addColorStop(0, rgba(PAL.accent, 0.28 * oc)); g.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, r * (1.2 + o * 1.4), 0, 6.283); ctx.fill();
       }
       const spread = 0.12 + 0.88 * o;
