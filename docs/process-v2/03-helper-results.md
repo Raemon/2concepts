@@ -253,3 +253,47 @@ abandonment rules, hits the most legitimate holders hardest.
   That's partly real (these are distinct mechanisms with distinct cases). It may also be a shared attractor of the
   model, the "selection effect over records" territory I flagged in note 02. I'll treat the family as one
   territory when ranking, so it doesn't win just by having many entries.
+
+---
+
+## Insurance & actuarial practice (51 structures; 49 killed, 2 borderline survivors)
+
+This helper ran about 16 searches before the budget ran out. Survivor B was not searched.
+
+**Representative kills:**
+- Hours clause → modifiable temporal unit problem.
+- WTC one or two occurrences → sortal-relative counting.
+- LMX spiral → named.
+- Mutually repugnant other-insurance clauses → renvoi / battle of the forms.
+- Franchise deductible → notches.
+- Fixing the damage destroys the evidence → order of volatility (RFC 3227).
+- Successful prevention erases proof of the threat → preparedness paradox.
+- Title washing / reflagging → cheap pseudonyms.
+- Too-perfect documentation → "too good to be true".
+
+**Survivor (borderline): Outcome-gated contestability.** An agreement can be voided for defects at formation, but
+checking only pays after a bad outcome. That gives the checker a free option, exercised exactly when the other side
+is most exposed.
+- *Cases:* post-claims underwriting / rescission; mortgage putbacks only on defaulted loans; after-acquired
+  evidence in employment; denaturalization (Maslenjak); sovereign "odious debt" audits.
+- *Moves:*
+  - Treat no-verification products as a written put.
+  - Use seasoning clauses: release after a run of good performance, plus estoppel for anything checkable at
+    inception.
+- *Nearest:* Townsend's costly state verification; Picard on verification without commitment.
+- *Helper's estimate:* about 30%.
+
+**Survivor (weak, unsearched): Mixture-status (taint) rule shapes and their exploits.**
+- *Shapes and the exploit each invites:* absorbing → contamination attacks; proportional → dilution; threshold →
+  dilute to just under the line.
+- *Drift:* every shape drifts toward the same hybrid, a threshold for innocent mixing plus forfeiture for
+  deliberate mixing.
+- *Cases:* anti-concurrent causation; trust tracing (Clayton's Case, Re Hallett, Barlow Clowes); crypto taint
+  (dusting); the OFAC 50% rule (Rusal); kashrut 1/60 with a ban on deliberate nullification; fruit of the
+  poisonous tree; the EU GMO 0.9% threshold.
+- *Helper's estimate:* 30–35% as a typology.
+
+**My reaction.**
+- *Outcome-gated contestability:* real, but it's an option-value restatement of costly state verification.
+  Medium-weak.
+- *Taint typology:* a nice catalogue, but a typology isn't a new way of seeing. Weak as a concept.
