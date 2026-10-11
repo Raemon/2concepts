@@ -193,3 +193,63 @@ layers are held by different parties; a merger silently kills them.
   here, reaffirming re-coins them. It's interesting that two independent searches keep finding time-indexed
   reference. But that may be a shared attractor, and it's Kaplan plus ratification. Medium-weak.
 - *Gap interests:* killed as named.
+
+---
+
+## Record- and name-keeping institutions (34 structures; 32 killed, 2 survivors)
+
+This helper made only 15 searches before the shared budget ran out. Survivor 1 is unverified by search.
+
+**Representative kills:**
+- Ghost entries → ghost words / paper towns.
+- Identifiers parsed as data → Hyrum / protocol ossification.
+- Default values as phantom hotspots (Null Island) → disguised missing data.
+- A better test looks worse than the reference → imperfect-reference-standard bias / Chang's epistemic iteration.
+- Redefinition moves uncertainty → Tal's "economies of uncertainty".
+- In a split, the name follows the anchor → closest continuer / state succession.
+- Weeding by usage → selective labels.
+- Hedges stripped in aggregation → modality deletion (Latour & Woolgar).
+
+**Survivor: The settledness trap.** Proof of a status is mostly produced when the status is contested. The most
+settled statuses therefore carry the least proof, so any shift to documentary proof, or to inactivity-means-
+abandonment rules, hits the most legitimate holders hardest.
+- *Cases:*
+  - Windrush: pre-1973 arrivals with full right of abode were detained and deported after landing cards were
+    destroyed in 2010.
+  - Assam NRC 2019: 1.9M excluded.
+  - Voter ID and home births.
+  - Credit invisibles, including stale files of people who paid off their debts.
+  - The most stable code has the fewest tests (Feathers).
+  - *Husted v. APRI* voter purges for inactivity.
+  - Edward I's quo warranto, resolved by possession since 1189.
+- *Moves:*
+  - Before imposing a proof requirement, profile exposure by tenure cohort.
+  - Pre-issue papers or presumptions by tenure.
+  - Keep records of uncontested statuses because nobody requests them.
+  - Write characterization tests for the most stable modules first.
+- *Surplus:*
+  - Inverted targeting: a regime aimed at recent irregular entrants concentrates its false positives at the
+    opposite end of the tenure distribution.
+  - The victims are invisible in error statistics until the regime shift happens.
+- *Nearest:* the rationale for prescription; lost modern grant; documentary citizenship (Sadiq); administrative
+  burden.
+- *Helper's estimate:* 40–50%.
+
+**Survivor (weak): Authority migrates to the most accessible realization.**
+- *Cases:* the kilogram artifact → Planck constant; print → electronic OJ; monuments → GNSS cadastre; Airy →
+  IERS meridian; culture → genome type; Preah Vihear map beats treaty line.
+- *Nearest:* estoppel/acquiescence + convention theory.
+- *Helper's estimate:* 30–35%.
+
+**My reaction.**
+- *Settledness trap:* strong. Windrush is a perfect emblem, and the inverted-targeting corollary is real surplus.
+  The weakness: prescription law is literally the institutional answer to it, so a lawyer would say "that's why we
+  have prescription". But the *general* point is that evidence density is anti-correlated with legitimacy, because
+  evidence is a by-product of contest. That is broader than prescription and drives non-legal cases (code tests,
+  credit files).
+- **Convergence warning.** The settledness trap, my own "all-clear trap", remedy–signature collision and the open
+  top bracket all share a shape: *an instrument or record is structurally blind exactly where things are fine,
+  settled or largest, and the blindness hides itself.* Four helpers working from different seeds converged here.
+  That's partly real (these are distinct mechanisms with distinct cases). It may also be a shared attractor of the
+  model, the "selection effect over records" territory I flagged in note 02. I'll treat the family as one
+  territory when ranking, so it doesn't win just by having many entries.
