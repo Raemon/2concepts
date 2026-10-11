@@ -332,3 +332,57 @@ direction moves. Those meet more resistance, and the hidden misalignment surface
 **My reaction.** Better than its own rating, I think. The economics instance is named, but the general lens is
 "common drift as a solvent for relative adjustment, and its withdrawal as a revealer". It has clean cases in
 computing, firms and painting. It's still a generalization of one known concept. Medium-weak.
+
+---
+
+## Lab science & measurement (38 structures; 36 killed, 2 survivors)
+
+This helper got zero searches (the budget was exhausted), so all its precedent checks are from memory.
+
+**Representative kills:**
+- Constants drift toward the accepted value → bandwagon effect.
+- Time-of-observation bias → TOBS.
+- Network-wide instrument change → common-mode.
+- Blanks dominating low-biomass samples → kitome / Lizardman's constant.
+- A correction outlives its defect → second best / compensatory mutation.
+- Recalibration erases the drift record → as-found/as-left.
+- Auto-zero absorbs a real change → shifting baselines.
+- Pull of the Recent → named.
+
+**Survivor: Fold-back indicator.** Some indicators are produced by the very capacity whose loss they report. The
+reading rises with severity until the severity disables its producer, then falls, so a low or silent reading is
+ambiguous between "mild" and "catastrophic".
+- *Cases:*
+  - The high-dose hook effect (giant prolactinomas, molar-pregnancy hCG).
+  - "Silent chest" in near-fatal asthma.
+  - Neutropenic patients with no pus.
+  - AF447: the stall warning was inhibited below 60 kt and returned when the pilots made the correct
+    nose-down input.
+  - Hurricane Maria's official toll of 64 vs about 2,975.
+  - SRE: error rates read zero when the front end is fully down.
+  - Paralyzable detectors.
+  - Wards with the fewest incident reports.
+- *Moves:*
+  - A general "dilution test": push the system milder; if the reading rises, you're past the fold.
+  - Pair every self-generated indicator with an external probe.
+  - Triage silent units first.
+- *Surplus:*
+  - Feedback loops on fold-back indicators have a runaway region: past the fold, deepening the crisis improves
+    the reading and is reinforced.
+  - More sensitivity can't fix it; only an independent channel can.
+  - Fewer extreme readings alongside rising outside evidence is itself diagnostic.
+- *Nearest:* hook/prozone effect; paralyzable dead time; Dunning–Kruger / anosognosia; self-masking MNAR; white-box
+  vs black-box monitoring; live-zero 4–20 mA.
+- *Helper's estimate:* about 50%.
+
+**Survivor (weak): Sensitivity ratchet.** "Any detectable amount" rules delegate their strictness to instrument
+progress (Delaney Clause, clenbuterol, cocaine on banknotes, per-se THC laws). The helper believes it's probably
+named as "the vanishing zero" in 1970s food law. Weak.
+
+**My reaction.**
+- *Fold-back:* the strongest *mechanism* so far. It's crisp ("the signal is made by the thing being destroyed"),
+  vivid (silent chest, AF447) and has real formal surplus (the runaway region).
+- Biggest risk: Dunning–Kruger and anosognosia are the same structure in cognition. A LessWronger will say "that's
+  Dunning–Kruger for instruments". Also, the hook effect is literally named.
+- It belongs to the same "blind where it matters" family as the settledness trap, all-clear, remedy–signature and
+  open top bracket.
