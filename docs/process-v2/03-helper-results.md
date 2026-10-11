@@ -615,3 +615,54 @@ right dose, so harm concentrates at resumption.
 - *Helper's estimate:* about 35%.
 - The living-systems helper found the same pattern ("lapsed stressor") and killed it narrowly as loss of tolerance
   + the acute:chronic workload ratio. Another convergence. Medium-weak (soft-start principle).
+
+---
+
+## Anomaly-driven search (34 structures; 2 borderline)
+
+This helper made 9 searches and 3 direct fetches.
+
+**Representative kills:**
+- Precise navigation removes protective scatter → Reich's navigation paradox / jitter.
+- Training scars → negative transfer.
+- 248-day bugs → software aging.
+- Grade-deflation penalty → signal-jamming.
+- PATCO echo → demographic echo.
+- Vagueness buffers conflict → constructive ambiguity.
+- *The event destroys its own instrument, so the low reading is trusted (Chernobyl's 3.6 R dosimeters)* → censoring/clipping.
+- Removing a harm starves adapted processes (sulfur deficiency) → aerosol masking / Merton.
+- Prevalence-induced concept change.
+- Common-cause failure.
+- Excel renaming genes → lock-in.
+- Moral crumple zone.
+
+**Borderline: Compensation overhang.** When others have silently offset a long-standing defect, removing the
+defect is an equal and opposite shock that lands on them.
+- *Cases:* clozapine toxicity after smoking cessation; stopping rifampicin under warfarin; the 1945 SST bias
+  correction; taxi medallions.
+- *Surplus:* closed-loop compensators unwind under a gradual ramp; open-loop ones never do.
+- *Helper's estimate:* about 20% (Hyrum + Tullock's transitional gains trap).
+
+**Borderline: Self-foreclosing remedy.** The hazard degrades the channel the remedy depends on.
+- *Cases:* Estonia and Costa Concordia lifeboats unlaunchable due to list; Rita evacuation gridlock; Fukushima
+  venting; the March 2020 dash for cash; dementia and advance directives.
+- *Helper's estimate:* about 10% (wrong-way risk + point of no return).
+
+**My reaction.**
+- The Chernobyl kill sharpens the fold-back signal. Clipping/saturation is named: a reading stuck at the max. The
+  fold-back is *non-monotonic*: the reading **falls** as severity rises past the fold, because severity disables
+  the signal's producer. That's what makes it dangerous, since the reading looks like improvement rather than
+  "off the scale". The distinction belongs in the write-up.
+- *Self-foreclosing remedy* is the action-side twin of the fold-back signal (the hazard destroys the remedy's
+  channel rather than the warning's). Noted as a possible enrichment, not a separate candidate.
+
+---
+
+## Totals across all 14 helpers
+
+About 560 structures were considered across the 14 helpers. About 535 were killed by an existing name, and about
+25 survived in some form. Most survivors are cross-field unifications of locally named phenomena; helpers
+estimated each at 10–50% likely to be judged new.
+
+Caveat on search coverage: the shared search budget ran out early. Most kills in the second wave rest on the
+helpers' background knowledge. For the top candidates I re-ran precedent searches myself; see note 04.
