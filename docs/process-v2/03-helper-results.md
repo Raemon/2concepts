@@ -297,3 +297,38 @@ is most exposed.
 - *Outcome-gated contestability:* real, but it's an option-value restatement of costly state verification.
   Medium-weak.
 - *Taint typology:* a nice catalogue, but a typology isn't a new way of seeing. Weak as a concept.
+
+---
+
+## Crafts & restoration (42 structures; 41 killed, 1 provisional)
+
+This helper got only 2 searches before the budget ran out, so most kills are from background knowledge.
+
+**Its meta-finding:** "most of what masters know turns out to be a local rediscovery of a concept already named in
+mechanics, control or statistics."
+- Pitch-raise overpull → successive over-relaxation.
+- Wolf interval → error budgeting.
+- Closer brick → compensator.
+- Batten fairing → splines/regularization.
+- Three-plate method → three-cornered hat.
+- Pyrometric cones → witness coupons (with an explicit theory of matched kinetics).
+- Sourdough convergence → Baas Becking.
+- Cradling warped panels → Hyrum / integral windup.
+
+**Provisional survivor: Drift cover.** When a whole system drifts one way, the relative changes its parts need can
+happen as unequal amounts of the same-direction move. When the drift stops, relative change needs opposite-
+direction moves. Those meet more resistance, and the hidden misalignment surfaces at once.
+- *Cases:*
+  - Inflation lets real wages diverge without nominal cuts (Tobin's "grease the wheels").
+  - Moore's law hid software inefficiency until 2005 ("The free lunch is over").
+  - Yellowed varnish hid unequal pigment ageing.
+  - Growing firms shrink units by not backfilling, then ZIRP's end forced layoffs.
+  - Pulling a flat piano up to A440.
+- *Surplus:*
+  - The shock scales with the spread of misalignment times the drift's duration.
+  - The capacity for negative moves withers while it's unneeded.
+- *Helper's estimate:* 15–20% ("grease the wheels, generalized").
+
+**My reaction.** Better than its own rating, I think. The economics instance is named, but the general lens is
+"common drift as a solvent for relative adjustment, and its withdrawal as a revealer". It has clean cases in
+computing, firms and painting. It's still a generalization of one known concept. Medium-weak.
