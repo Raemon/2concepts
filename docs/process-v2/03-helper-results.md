@@ -567,3 +567,51 @@ operator, across the whole upkeep group, rather than inspect the output.
 that exist only while someone keeps doing work), reaches beyond concealment: polders and pumps, abandoned mines
 flooding, Ponzi schemes, the "Bob does X every day" system. But in physics that general version is dissipative
 structure / homeostasis. Medium-weak.
+
+---
+
+## Clinical practice (about 55 structures; 2 qualified survivors)
+
+This helper got zero searches.
+
+**Representative kills:**
+- Stopping a drug to test need is biased by rebound → carryover / shifting the burden.
+- Adjustments drift toward the quiet error → seen and unseen; scream test.
+- A fix erases evidence → order of volatility.
+- Copy-forward dating → bitemporal.
+- "?PE" → "PE" → modality stripping.
+- Allergy labels never retested → hot stove.
+- Oxygen masking hypoventilation → fault masking.
+- Watchful waiting → P-F interval.
+- Least-injured arrive first → upside-down triage.
+
+**Survivor: Response-signal pseudonormalization.** Some signals come from the system's *response* to a load, not
+the load. They rise while the response holds, then fall back through "normal" as it fails, so "back to normal"
+means recovery or collapse.
+- *Cases:*
+  - PaCO2 in acute asthma ("normal" means fatigue).
+  - Galeras volcano 1993: falling SO2 read as quieting; the vent had sealed, and six volcanologists were killed.
+  - Average latency improves during an outage because errors return fast.
+  - Unemployment falling through a participation drop.
+  - Case counts falling when testing collapses (WHO's 5% positivity check).
+  - Stale-price low volatility.
+  - Hirschman exit vs voice.
+- *Surplus:*
+  - False reassurance clusters right before collapse.
+  - The signal's peak marks maximum compensation, not maximum danger.
+  - Weak-responders read "normal" from the start.
+- *Helper's estimate:* about 40%.
+
+**This is the same concept as the lab-science helper's "fold-back indicator"**, reached independently from a
+different seed. Both cite the silent chest. The two-helper convergence is evidence that the pattern is real and
+recurrent. It is *not* evidence that it's unnamed: per the brief, convergent helpers may share an attractor. I'm
+merging them into one candidate: **Fold-back signal**.
+
+**Survivor: Re-entry overshoot.** During a pause, absorption capacity decays faster than the actor's sense of the
+right dose, so harm concentrates at resumption.
+- *Cases:* post-release overdoses (12.7×); the clozapine restart rule; refeeding syndrome; TCP restart after
+  idle; NFL lockout Achilles ruptures; pilot currency; Texas City at startup.
+- *Surplus:* safety pauses can raise total harm by moving it to their end.
+- *Helper's estimate:* about 35%.
+- The living-systems helper found the same pattern ("lapsed stressor") and killed it narrowly as loss of tolerance
+  + the acute:chronic workload ratio. Another convergence. Medium-weak (soft-start principle).
