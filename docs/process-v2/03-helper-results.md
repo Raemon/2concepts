@@ -485,3 +485,44 @@ left-pad. Killed as common-cause failure.
   genuine surplus. And it's a different mechanism from the blind-instrument family: here the slot-filler is
   *strategic*, choosing a value that maximizes the chance of non-use.
 - Risk: "sentinel values and in-band signalling" is the CS name for the mechanism. Medium-strong.
+
+---
+
+## Invented formal structures (43 structures; 2 survivors, unsearched)
+
+This helper got zero searches. Its kills cite named precedents from memory.
+
+**Representative kills:**
+- Window-transitive relation → temporal networks / tolerance relations.
+- Per-observer conservation → Chandy–Lamport channel state / float.
+- Obligation to the last observer → last clear chance.
+- Referent fixed by first query → binding time / lazy evaluation.
+- Evidence consumed by reuse → reusable holdout.
+- Can-prove-to-B-not-C → designated-verifier signatures.
+- Blame goes to the role-holder at discovery → claims-made.
+- Too-perfect corroboration → Gunn et al. 2016.
+
+**Survivor: Non-exposure certificate.** Third-party-checkable evidence that a judgment had no causal path from some
+information. There are three routes: Time (fixed before access), Cut (a monitored barrier) and Trace (exposure
+would leave a mark: a canary, a fake town, a decoy).
+- *Cases:* 10b5-1 plans; Phoenix's clean-room BIOS; A/B samples; Agloe / Mountweazels; the BIG-bench canary
+  string; post-cutoff benchmarks; sequential unmasking; preregistration; the Concealed Information Test.
+- *Surplus:*
+  - Cooling-off law: a Time certificate leaks unless the cooling-off period is at least the payoff horizon (the
+    SEC's 2022 amendments).
+  - Canaries don't survive transformative copying, which predicts a shift to Time certificates (as LLM eval is
+    doing).
+  - Probes self-contaminate, so they need decoys.
+- *Helper's estimate:* 30–40% ("a review-article taxonomy of blinding").
+
+**Survivor (weak): Appreciating evidence.** A stored record's evidential yield rises with analytic progress.
+- *Cases:* IOC retests; the Golden State Killer; the Vesuvius Challenge.
+- *Surplus:* the incentive to destroy peaks just before better analysis arrives (the Moscow lab destroying
+  samples in 2014).
+- *Nearest:* quasi-option value + spoliation.
+- *Helper's estimate:* 15–25%.
+
+**My reaction.**
+- *Non-exposure certificate:* useful, and timely for AI evals, but it's a taxonomy. Medium-weak as a "new way of
+  thinking".
+- *Appreciating evidence:* weak.
