@@ -22,6 +22,9 @@ A small game built around two concepts, and a third that appears when they combi
 ![Captain vision: during an inspection you see only what he sees, the noise](docs/screenshots/captain-vision.png)
 ![Certified safe, while someone drowns in plain sight](docs/screenshots/certified.png)
 
+**Put it in a LessWrong post:** paste [`dist/still-water-lw.html`](dist/still-water-lw.html) as plain text into a
+Custom Widget block (steps in [`10-lesswrong-widget`](docs/process-v2/10-lesswrong-widget.md#inserting-it-by-hand-lesswrong-editor)).
+
 **Play it:** open [`dist/still-water.html`](dist/still-water.html). It's one self-contained file, about 80 KB, and
 works as a LessWrong post widget: sandboxed iframe, 340–700 px wide, auto height, no scroll trapping (on a phone,
 swipes scroll the post until you tap the game). Nine shifts in three threads (*Quiet*, *The Captain*, *Calm water*),
@@ -38,7 +41,7 @@ plus *Endless summer*.
 ## Develop
 
 ```bash
-node tools/build.js --page    # src/ -> dist/still-water.html (+ a standalone page)
+node tools/build.js --page    # src/ -> dist/still-water.html, dist/still-water-lw.html (paste into LessWrong), + a standalone page
 node tools/check-levels.js    # solver: every level solvable, and unsolvable under "ordinary" rules
 node tools/endless-bots.js    # how long bots with and without the ideas last in Endless summer
 node tools/e2e.js             # play every level through the real page with mouse clicks (needs Playwright)

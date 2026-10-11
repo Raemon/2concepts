@@ -23,3 +23,6 @@ if (process.argv.includes('--page')) {
   fs.writeFileSync(path.join(__dirname, '../dist/still-water-page.html'), page.trim() + '\n');
   console.log('dist/still-water-page.html', (page.length / 1024).toFixed(1) + ' KB');
 }
+
+// The LessWrong paste-safe fragment (see docs/process-v2/10-lesswrong-widget.md), rebuilt every time so it can't drift.
+require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'build-lw-widget.js'), path.join(__dirname, '../dist/still-water.html'), path.join(__dirname, '../dist/still-water-lw.html')], { stdio: 'inherit' });
