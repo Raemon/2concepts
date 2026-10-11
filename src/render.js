@@ -21,6 +21,25 @@
     let W = 0, H = 0, dpr = 1;
     const L = {};             // layout
     let starField = [];
+    let grain = null;
+    function makeGrain() {
+      try {
+        const g = document.createElement('canvas'); g.width = g.height = 256;
+        const gc = g.getContext('2d'), img = gc.createImageData(256, 256);
+        for (let i = 0; i < img.data.length; i += 4) { const v = 128 + (Math.random() - 0.5) * 70; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+        gc.putImageData(img, 0, 0);
+        gc.strokeStyle = 'rgba(255,255,255,0.25)'; gc.lineWidth = 0.6;
+        for (let k = 0; k < 40; k++) { const x = Math.random() * 256, y = Math.random() * 256, a = Math.random() * 6.28, l = 6 + Math.random() * 18; gc.beginPath(); gc.moveTo(x, y); gc.quadraticCurveTo(x + Math.cos(a + 0.5) * l / 2, y + Math.sin(a + 0.5) * l / 2, x + Math.cos(a) * l, y + Math.sin(a) * l); gc.stroke(); }
+        grain = ctx.createPattern(g, 'repeat');
+      } catch (e) { grain = null; }
+    }
+    function paper() {
+      if (!grain) makeGrain();
+      if (grain) { ctx.save(); ctx.globalAlpha = 0.06; ctx.globalCompositeOperation = 'overlay'; ctx.fillStyle = grain; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+      const v = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.35, W / 2, H * 0.5, Math.max(W, H) * 0.75);
+      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(4,6,16,0.45)');
+      ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    }
 
     function resize(cssW) {
       dpr = Math.min(2.5, root.devicePixelRatio || 1);
@@ -37,13 +56,13 @@
     }
 
     function flowerX(i, n) {
-      const left = 0.13, right = 0.87;
+      const left = 0.15, right = 0.85;
       return W * (n === 1 ? 0.5 : left + (right - left) * i / (n - 1));
     }
-    function radius(n) { return clamp(W / (n * 2.5), 20, 46); }
+    function radius(n) { return Math.min(clamp(W / (n * 2.5), 20, 46), W * 0.125); }
 
     // ---------- background ----------
-    function sky(t, dawn) {
+    function sky(t, dawn, night) {
       const g = ctx.createLinearGradient(0, 0, 0, H);
       g.addColorStop(0, rgba(mix(PAL.skyTop, PAL.dawnTop, dawn), 1));
       g.addColorStop(0.55, rgba(mix(PAL.skyMid, PAL.dawnMid, dawn), 1));
@@ -54,7 +73,8 @@
         ctx.fillStyle = rgba(PAL.ink, a); ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill();
       }
       // moon
-      const mx = W * 0.15, my = H * 0.13, mr = W * 0.045;
+      const prog = night == null ? 0.05 : clamp(night, 0, 1);
+      const mx = W * (0.10 + 0.62 * prog), my = H * (0.15 - 0.06 * Math.sin(prog * Math.PI)), mr = W * 0.045;
       const halo = ctx.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 5);
       halo.addColorStop(0, rgba([230, 232, 255], 0.22 * (1 - dawn * 0.7)));
       halo.addColorStop(1, 'rgba(0,0,0,0)');
@@ -191,13 +211,13 @@
       if (f.fogUntil != null) {
         const fogTop = L.threadTop, fogBottom = y0 - (hist.length - 1 - f.fogUntil + breathT) * step;
         if (fogBottom > fogTop) {
-          const g = ctx.createLinearGradient(0, fogTop, 0, fogBottom);
-          g.addColorStop(0, 'rgba(120,130,170,0)'); g.addColorStop(1, 'rgba(120,130,170,0.16)');
-          ctx.fillStyle = g; ctx.fillRect(x0 - r * 0.9, fogTop, r * 1.8, fogBottom - fogTop);
-          for (let k = 0; k < 6; k++) {
-            const yy = fogTop + (fogBottom - fogTop) * hash(i * 10 + k);
-            ctx.fillStyle = 'rgba(160,170,210,0.10)';
-            ctx.beginPath(); ctx.ellipse(x0 + Math.sin(t * 0.5 + k) * r * 0.4, yy, r * 0.8, r * 0.28, 0, 0, 6.283); ctx.fill();
+          for (let k = 0; k < 9; k++) {
+            const yy = fogTop + (fogBottom - fogTop) * (k + 0.5) / 9 + Math.sin(t * 0.4 + k) * 4;
+            const xx = x0 + Math.sin(t * 0.3 + k * 1.7) * r * 0.35;
+            const rr = r * (0.7 + 0.3 * hash(i * 10 + k));
+            const g = ctx.createRadialGradient(xx, yy, 0, xx, yy, rr);
+            g.addColorStop(0, 'rgba(150,160,200,0.20)'); g.addColorStop(1, 'rgba(150,160,200,0)');
+            ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(xx, yy, rr, rr * 0.55, 0, 0, 6.283); ctx.fill();
           }
         }
       }
@@ -235,7 +255,7 @@
       const spread = 0.12 + 0.88 * o;
       for (let k = 0; k < petals; k++) {
         const u = petals === 1 ? 0 : k / (petals - 1) - 0.5;          // -0.5..0.5
-        const ang = u * Math.PI * 1.9 * spread + Math.sin(t * 1.1 + k) * 0.02;
+        const ang = u * Math.PI * 1.7 * spread + Math.sin(t * 1.1 + k) * 0.02;
         const len = r * (fold ? 0.62 + 0.38 * o : 0.5 + 0.3 * o);
         const wid = r * (fold ? 0.22 : 0.10);
         ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang);
@@ -351,7 +371,7 @@
     }
 
     function owl(v, n, t, breathT) {
-      const ow = v.owl, s = clamp(W * 0.032, 10, 20);
+      const ow = v.owl, s = clamp(W * 0.038, 12, 24);
       const p = L.perch;
       const hover = i => ({ x: flowerX(i, n), y: L.headY - radius(n) * 2.3 });
       let x = p.x, y = p.y, flap = null, eyes = 'open', look = null;
@@ -427,10 +447,32 @@
       }
     }
 
+    function labels(v, t, n) {
+      for (const lb of v.labels || []) {
+        const k = clamp((t - lb.t0) / 0.6, 0, 1) * (lb.gone ? clamp(1 - (t - lb.gone) / 0.4, 0, 1) : 1);
+        if (k <= 0) continue;
+        const x0 = flowerX(lb.f, n), r = radius(n);
+        const y = L.headY - r * 0.6 - (L.headY - L.threadTop) * lb.at;
+        ctx.font = `italic ${Math.round(clamp(W * 0.034, 11, 15))}px Georgia`;
+        const tw = ctx.measureText(lb.text).width;
+        let right = x0 < W * 0.55;
+        if (right && x0 + r * 0.9 + tw + 8 > W) right = false;
+        if (!right && x0 - r * 0.9 - tw - 8 < 0) right = true;
+        const tx = right ? x0 + r * 0.9 : x0 - r * 0.9;
+        ctx.globalAlpha = k;
+        ctx.strokeStyle = 'rgba(232,236,255,0.6)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x0 + (right ? 6 : -6), y); ctx.lineTo(tx, y); ctx.stroke();
+        ctx.fillStyle = 'rgba(232,236,255,0.92)'; ctx.font = `italic ${Math.round(clamp(W * 0.034, 11, 15))}px Georgia`;
+        ctx.textAlign = right ? 'left' : 'right'; ctx.textBaseline = 'middle';
+        ctx.fillText(lb.text, tx + (right ? 4 : -4), y);
+        ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
+      }
+    }
+
     function draw(v, t) {
       const n = v.flowers.length;
       const bt = v.breathT;
-      sky(t, v.dawn || 0);
+      sky(t, v.dawn || 0, v.level && v.level.length < 9999 ? (v.state.breath + (v.running ? v.breathT : 0)) / v.level.length : null);
       branch();
       for (let i = 0; i < n; i++) thread(v, i, n, t, bt);
       pond(t, v.dawn || 0);
@@ -438,7 +480,15 @@
       for (let i = 0; i < n; i++) {
         const f = v.flowers[i], x = flowerX(i, n), r = radius(n);
         // telegraphed gust
-        if (f.gustSoon) { f.jolt = Math.sin(t * 22) * 0.06; } else if (!f.joltT || t - f.joltT > 0.6) f.jolt = 0;
+        if (f.gustSoon) {
+          f.jolt = Math.sin(t * 22) * 0.06;
+          ctx.strokeStyle = `rgba(201,209,239,${0.18 + 0.12 * Math.sin(t * 9)})`; ctx.lineWidth = 1;
+          for (let j = 0; j < 3; j++) {
+            const yy = L.headY - r * (0.2 + j * 0.45), ph = ((t * 0.9 + j * 0.3) % 1);
+            const xx = x - r * 3.2 + ph * r * 2.2;
+            ctx.beginPath(); ctx.moveTo(xx - r * 0.9, yy); ctx.quadraticCurveTo(xx - r * 0.4, yy - r * 0.18, xx, yy); ctx.stroke();
+          }
+        } else if (!f.joltT || t - f.joltT > 0.6) f.jolt = 0;
         const h = stem(x, r, f, t);
         reflection(h.hx, r, f);
         head(h.hx, h.hy, r, f, t);
@@ -460,6 +510,8 @@
       L.heads = heads;
       if (v.level && v.level.owl) L.owlPos = owl(v, n, t, bt); else L.owlPos = null;
       effects(v, t);
+      labels(v, t, n);
+      paper();
     }
 
     function hitFlower(x, y, n) {

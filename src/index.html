@@ -23,7 +23,7 @@
   #meters { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-dim); }
   .drop { display: inline-block; width: 10px; height: 14px; margin-left: 2px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; transform: rotate(180deg); border: 1.5px solid var(--water); box-sizing: border-box; position: relative; overflow: hidden; vertical-align: -2px; }
   .drop i { position: absolute; left: 0; right: 0; top: 0; background: var(--water); }
-  #stage { position: relative; }
+  #stage { position: relative; background: var(--bg); }
   canvas { display: block; width: 100%; touch-action: pan-y; }
   #foot { display: flex; align-items: center; gap: 8px; padding: 6px 10px 10px; }
   #hint { flex: 1; font-family: Georgia, serif; font-style: italic; color: var(--ink); font-size: 14px; min-height: 19px; }
@@ -37,9 +37,12 @@
   .overlay p { margin: 4px 0 14px; max-width: 30em; color: var(--ink); }
   .overlay .sub { color: var(--ink-dim); font-style: italic; font-family: Georgia, serif; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  #menu .thread { margin: 6px 0; width: 100%; max-width: 420px; text-align: left; }
-  #menu .thread h3 { margin: 0 0 4px; font: 12px/1 -apple-system, sans-serif; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); }
-  #menu .lv { min-width: 0; padding: 0 10px; height: 34px; margin: 0 4px 4px 0; }
+  #menu { justify-content: flex-start; padding-top: 10px; }
+  #menu h2 { font-size: 18px; margin-bottom: 2px; }
+  #menu .thread { margin: 4px 0; width: 100%; max-width: 440px; text-align: left; }
+  #menu .thread h3 { margin: 0 0 3px; font: 11px/1 -apple-system, sans-serif; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); }
+  #menu .thread p { margin: 0 0 4px; font-size: 12px; color: var(--ink-dim); font-style: italic; font-family: Georgia, serif; }
+  #menu .lv { min-width: 0; padding: 0 9px; height: 30px; margin: 0 3px 3px 0; font-size: 13px; }
   #menu .lv .s { color: var(--gold); font-size: 11px; margin-left: 4px; letter-spacing: -1px; }
   #menu .lv.locked { opacity: 0.35; }
   .stars { font-size: 26px; color: var(--gold); letter-spacing: 6px; margin: 4px 0 8px; }

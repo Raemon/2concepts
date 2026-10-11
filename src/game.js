@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const H = window.Hush, R = window.HushRender, A = window.HushAudio, SOLVER = window.HushSolver;
-  const { LEVELS, THREADS } = window.HUSH_LEVELS;
+  const { LEVELS, THREADS, BLURBS, makeNight: generateNight } = window.HUSH_LEVELS;
   const $ = id => document.getElementById(id);
 
   const canvas = $('c');
@@ -39,6 +39,7 @@
   }
 
   function startLevel(level, opts = {}) {
+    clearTimeout(resultTimer);
     const state = H.init(level);
     if (level.alternatives) {
       // A fogged past: the garden secretly picks which bud is dying, so the test, not memory, decides.
@@ -55,6 +56,7 @@
       level, state, flowers, breathT: 0, running: false, effects: [], dawn: 0,
       owl: { mode: 'idle', target: -1, gaze: null, selected: false, returnT: null, inspectT: null, flyT0: 0, flyT1: 1, drag: null },
       breathMs: opts.breathMs || (level.owl ? 950 : 880), endAt: null, outcome: null,
+      labels: (level.labels || []).map(l => Object.assign({ t0: now() + 0.3, gone: null }, l)), streak: 0,
     };
     const up = H.upcoming(level, state, 3);
     view.owl.gaze = level.owl && up.visits.length ? up.visits[0].f : null;
@@ -62,6 +64,7 @@
     if (level.id === 't1') view.flowers.forEach((f, i) => { f.pulse = H.bloomOf('fold', level.flowers[i].t) >= 4; });
     mode = 'play';
     hideOverlays();
+    $('restartBtn').style.visibility = 'visible';
     ui.hint.textContent = level.hint || '';
     const th = endless ? `Night ${endless.night}` : `${THREADS[level.thread]} · ${level.name}`;
     ui.title.innerHTML = `<b>HUSH</b> · ${th}`;
@@ -69,7 +72,7 @@
   }
 
   function refreshMeters() {
-    if (!view) { ui.water.innerHTML = ''; ui.certs.textContent = ''; return; }
+    if (!view || mode === 'intro' || (mode === 'menu' && view.level.id === 'attract')) { ui.water.innerHTML = ''; ui.certs.textContent = ''; return; }
     const s = view.state, W = view.level.water;
     let html = '';
     for (let k = 0; k < W.max; k++) {
@@ -79,12 +82,16 @@
       html += `<span class="drop"><i style="height:${Math.round(fill * 100)}%"></i></span>`;
     }
     ui.water.innerHTML = html;
-    ui.certs.textContent = view.level.owl ? `◠ ${s.passes}` : '';
-    ui.certs.title = 'Certificates (passes)';
+    ui.certs.innerHTML = view.level.owl ? `<svg width="13" height="13" viewBox="0 0 13 13" style="vertical-align:-1px"><path d="M2 12V6.5a4.5 4.5 0 0 1 9 0V12z" fill="none" stroke="#ffd27a" stroke-width="1.3"/><circle cx="6.5" cy="1.4" r="1" fill="#ffd27a"/></svg> ${s.passes}` : '';
+    ui.certs.title = 'Certificates: flowers the Owl passed';
   }
 
   // ---------- actions ----------
-  function ensureRunning() { if (!view.running) { view.running = true; view.breathT = 0; } }
+  function ensureRunning() {
+    if (!view.running) { view.running = true; view.breathT = 0; }
+    // callouts fade a few breaths after play begins
+    const t = now(); view.labels.forEach(l => { if (!l.gone) l.gone = t + 2.5; });
+  }
 
   function doWater(i) {
     const s = view.state;
@@ -151,6 +158,7 @@
       if (e.type === 'gust') {
         cur.gust = true; cur.jog = 0; f.joltT = t; f.jolt = 0.35; A.gust();
         view.effects.push({ type: 'wind', x: p.x, y: p.y, t0: t - 0.1, dur: 0.7 });
+        view.effects.push({ type: 'text', text: 'gust', x: p.x, y: p.y - 56, col: [220, 228, 255], t0: t, dur: 1.1, size: 13 });
       } else if (e.type === 'gust-blocked') {
         view.effects.push({ type: 'wind', x: p.x, y: p.y, t0: t - 0.1, dur: 0.7 });
         view.effects.push({ type: 'text', text: 'sheltered', x: p.x, y: p.y - 50, col: [220, 230, 255], t0: t, dur: 1.2, size: 12 });
@@ -191,12 +199,30 @@
     view.running = false;
     view.outcome = won ? 'won' : 'lost';
     view.endAt = now();
-    if (won) A.dawn();
-    setTimeout(() => showResult(), won ? 1400 : 1500);
+    if (won) {
+      A.dawn();
+      const tt = now();
+      for (let k = 0; k < 26; k++) view.effects.push({ type: 'spark', x: rend.W * Math.random(), y: rend.H * (0.5 + 0.3 * Math.random()), vx: (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 60, r: 1.8, col: [255, 226, 160], t0: tt + Math.random() * 0.8, dur: 1.6 });
+    }
+    const finished = view;
+    clearTimeout(resultTimer);
+    resultTimer = setTimeout(() => { if (view === finished) showResult(); }, won ? 1400 : 1500);
   }
+  let resultTimer = null;
 
   // ---------- results, menus ----------
-  function hideOverlays() { ['intro', 'menu', 'result'].forEach(k => ui[k].classList.remove('on')); }
+  function hideOverlays() { ['intro', 'menu', 'result'].forEach(k => ui[k].classList.remove('on')); fitStage(); }
+  // An overlay taller than the garden stretches the stage instead of spilling over the buttons.
+  function fitStage() {
+    const st = $('stage');
+    st.style.minHeight = '';
+    const open = ['intro', 'menu', 'result'].map(k => ui[k]).find(o => o.classList.contains('on'));
+    if (open) {
+      open.style.bottom = 'auto'; const need = open.scrollHeight; open.style.bottom = '';
+      if (need > canvas.clientHeight) st.style.minHeight = need + 'px';
+    }
+    Shell.reportHeight();
+  }
   function button(label, fn, primary) {
     const b = document.createElement('button'); b.textContent = label; if (primary) b.className = 'primary';
     b.addEventListener('click', e => { e.stopPropagation(); A.unlock(); fn(); }); return b;
@@ -230,21 +256,19 @@
       ui.rButtons.appendChild(button('Try again', () => startLevel(lv), true));
       ui.rButtons.appendChild(button('Levels', showMenu));
     }
-    ui.result.classList.add('on');
+    ui.result.classList.add('on'); fitStage();
   }
 
   function showMenu() {
     mode = 'menu';
     const m = ui.menu; m.innerHTML = '';
-    const h = document.createElement('h2'); h.textContent = 'HUSH'; m.appendChild(h);
     THREADS.forEach((name, ti) => {
       const box = document.createElement('div'); box.className = 'thread';
       const h3 = document.createElement('h3'); h3.textContent = `${ti + 1} · ${name}`; box.appendChild(h3);
+      const blurb = document.createElement('p'); blurb.textContent = BLURBS[ti]; box.appendChild(blurb);
       LEVELS.filter(l => l.thread === ti).forEach(l => {
-        const i = LEVELS.indexOf(l);
-        const unlocked = i === 0 || progress[LEVELS[i - 1].id] || progress[l.id];
-        const b = button('', () => { if (unlocked) startLevel(l); }, false);
-        b.className = 'lv' + (unlocked ? '' : ' locked');
+        const b = button('', () => startLevel(l), false);
+        b.className = 'lv';
         const stars = progress[l.id] ? '✦'.repeat(progress[l.id]) : '';
         b.innerHTML = `${l.name}<span class="s">${stars}</span>`;
         box.appendChild(b);
@@ -255,36 +279,11 @@
     row.appendChild(button(`Endless night${best ? ` (best ${best})` : ''}`, startEndless, true));
     row.appendChild(button('Close', () => { if (view && view.outcome == null) { mode = 'play'; hideOverlays(); } else hideOverlays(); }));
     m.appendChild(row);
-    hideOverlays(); m.classList.add('on');
+    hideOverlays(); m.classList.add('on'); fitStage(); refreshMeters();
   }
 
   // ---------- endless night ----------
-  function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
-  function makeNight(night, seed) {
-    const r = rng(seed * 7919 + night * 104729);
-    const pick = a => a[Math.floor(r() * a.length)];
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const n = Math.min(6, 3 + Math.floor((night - 1) / 2));
-      const length = 24;
-      const flowers = [];
-      for (let i = 0; i < n; i++) {
-        const wilting = night >= 3 && r() < 0.18;
-        flowers.push({ kind: 'fold', t: wilting ? pick([8, 9]) : pick([1, 2, 3, 4]), rate: pick([3, 3, 4]), offset: Math.floor(r() * 3) });
-      }
-      const gusts = [];
-      const ng = Math.min(5, 1 + Math.floor(night / 2));
-      for (let k = 0; k < ng; k++) gusts.push({ at: 3 + Math.floor(r() * (length - 6)), f: Math.floor(r() * n), amount: 4 });
-      const owl = night >= 2;
-      const visits = [];
-      if (owl) { const nv = Math.min(4, 1 + Math.floor(night / 2)); for (let k = 0; k < nv; k++) visits.push({ at: 2 + Math.floor(r() * (length - 5)), f: Math.floor(r() * n) }); }
-      visits.sort((a, b) => a.at - b.at);
-      const level = { id: 'n' + night, thread: 2, name: 'Night ' + night, length, owl, water: { start: 1, max: 2, regen: night > 6 ? 5 : 4 },
-        flowers, gusts, visits, stars: [2, 4], hint: night === 1 ? 'Keep them all alive until dawn.' : night === 2 ? 'The Owl is awake.' : '' };
-      if (SOLVER.solveFeasible(level, 40000) === 'solved') return level;
-    }
-    return { id: 'n' + night, thread: 2, name: 'Night ' + night, length: 20, owl: false, water: { start: 2, max: 2, regen: 3 },
-      flowers: [{ kind: 'fold', t: 2, rate: 3, offset: 0 }, { kind: 'fold', t: 3, rate: 3, offset: 1 }, { kind: 'fold', t: 4, rate: 3, offset: 2 }], gusts: [], visits: [] };
-  }
+  const makeNight = (night, seed) => generateNight(night, seed, lv => SOLVER.solveFeasible(lv, 40000) === 'solved');
   function daySeed() { const d = new Date(); return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); }
   function startEndless() {
     endless = { night: 1, certs: 0, seed: daySeed(), lost: [] };
@@ -319,7 +318,7 @@
       ui.rButtons.appendChild(button('Again', startEndless, true));
       ui.rButtons.appendChild(button('Levels', () => { endless = null; showMenu(); }));
     }
-    ui.result.classList.add('on');
+    ui.result.classList.add('on'); fitStage();
   }
 
   // ---------- input ----------
@@ -394,6 +393,8 @@
     mode = 'intro'; view.running = true; view.breathMs = 1400;
     ui.title.innerHTML = '<b>HUSH</b> · a night garden'; ui.hint.textContent = '';
     ui.intro.classList.add('on');
+    refreshMeters();
+    $('restartBtn').style.visibility = 'hidden';
   }
 
   // ---------- loop ----------
@@ -444,6 +445,7 @@
     flower(i, b) { const p = rend.headPos(i); return { x: b.left + p.x, y: b.top + p.y }; },
     owl(b) { const o = rend.L.owlPos; return o ? { x: b.left + o.x, y: b.top + o.y } : null; },
     start(id) { canvas.click(); endless = null; startLevel(LEVELS.find(l => l.id === id)); },
+    go() { if (view) ensureRunning(); },
     state() { return view && { breath: view.state.breath, water: view.state.water, t: view.state.flowers.map(f => f.t), outcome: view.outcome, owl: view.state.owl.mode, passes: view.state.passes }; },
   };
   resize();

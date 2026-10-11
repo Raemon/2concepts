@@ -22,7 +22,7 @@ Columns:
 | o3 Busy owl | The Owl | WIN | WIN | no | capture | ✓ |
 | o4 Shelter | The Owl | WIN | WIN | no | capture | ✓ |
 | g1 Clean bill | Glass | WIN | no | no | both | ✓ |
-| g2 Getting better looks worse | Glass | WIN | no | no | both | ✓ |
+| g2 Better looks worse | Glass | WIN | no | no | both | ✓ |
 | g3 Certificates | Glass | WIN | no | no | both | ✓ |
 | g4 The quiet ones | Glass | WIN | no | no | both | ✓ |
 

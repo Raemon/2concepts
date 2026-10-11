@@ -23,6 +23,7 @@
     { id: 't3', thread: 0, name: 'Wilting',
       hint: 'Read the smoke.',
       lose: 'It was closing on its own. Nobody had watered it: it was wilting.',
+      labels: [{ f: 1, at: 0.62, text: 'wide open, a while ago' }, { f: 1, at: 0.08, text: 'closing on its own' }],
       length: 20, water: { start: 1, max: 2, regen: 4 }, owl: false, stars: [1, 2],
       flowers: [F(4, 3, 0), F(8, 3, 1), F(3, 3, 2)], gusts: [], visits: [] },
     { id: 't4', thread: 0, name: 'Listen',
@@ -40,7 +41,7 @@
 
     // ---------- Thread 2: The Owl (refractory-check capture), daisies that only open wider ----------
     { id: 'o1', thread: 1, name: 'Inspection',
-      hint: 'Drag the Owl to a flower that looks fine.',
+      hint: 'Tap the Owl, then a flower that looks fine.',
       lose: 'Send the Owl somewhere you look good, and it can’t be where you look bad.',
       length: 16, water: { start: 0, max: 2, regen: 3 }, owl: true, stars: [2, 4],
       flowers: [M(7, 3, 0), M(2, 3, 1), M(3, 3, 2)], gusts: [], visits: [{ at: 1, f: 0 }, { at: 9, f: 2 }] },
@@ -64,9 +65,10 @@
     { id: 'g1', thread: 2, name: 'Clean bill',
       hint: 'The Owl only reads the bloom.',
       lose: 'It passed because it was wilting. The glass sealed it away from water.',
+      labels: [{ f: 1, at: 0.1, text: 'quiet… but read its smoke' }],
       length: 18, water: { start: 0, max: 2, regen: 4 }, owl: true, stars: [2, 3],
       flowers: [F(2, 3, 0), F(8, 3, 0), F(3, 3, 2)], gusts: [], visits: [{ at: 2, f: 1 }, { at: 10, f: 2 }] },
-    { id: 'g2', thread: 2, name: 'Getting better looks worse',
+    { id: 'g2', thread: 2, name: 'Better looks worse',
       hint: 'A wilting flower opens when you save it.',
       lose: 'Saving it made it open, so the Owl saw distress. Keep the Owl busy while it recovers.',
       length: 18, water: { start: 0, max: 1, regen: 4 }, owl: true, stars: [2, 3],
@@ -84,7 +86,34 @@
       visits: [{ at: 3, f: 1 }, { at: 11, f: 3 }, { at: 19, f: 2 }] },
   ];
 
+  // Endless night: generated gardens that get harder, each checked solvable before it is played.
+  function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  function makeNight(night, seed, feasible) {
+    const r = rng(seed * 7919 + night * 104729);
+    const pick = a => a[Math.floor(r() * a.length)];
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const n = Math.min(6, 3 + Math.floor((night - 1) / 3)), length = 24, flowers = [];
+      for (let i = 0; i < n; i++) {
+        const wilting = night >= 4 && r() < (night >= 7 ? 0.2 : 0.15);
+        flowers.push(F(wilting ? pick([7, 8]) : pick([0, 1, 2, 3]), pick([3, 4, 4]), Math.floor(r() * 4)));
+      }
+      const gusts = [];
+      const ng = Math.min(5, 1 + Math.floor((night - 1) / 2));
+      for (let k = 0; k < ng; k++) gusts.push({ at: 3 + Math.floor(r() * (length - 6)), f: Math.floor(r() * n), amount: 4 });
+      const owl = night >= 2, visits = [];
+      if (owl) { const nv = Math.min(4, 1 + Math.floor((night - 2) / 2)); for (let k = 0; k < nv; k++) visits.push({ at: 3 + Math.floor(r() * (length - 6)), f: Math.floor(r() * n) }); }
+      visits.sort((a, b) => a.at - b.at);
+      const level = { id: 'n' + night, thread: 2, name: 'Night ' + night, length, owl, flowers, gusts, visits, stars: [2, 4],
+        water: { start: 2, max: 2, regen: night <= 3 ? 3 : night <= 8 ? 4 : 5 },
+        hint: night === 1 ? 'Keep them all alive until dawn.' : night === 2 ? 'The Owl is awake.' : '' };
+      if (!feasible || feasible(level)) return level;
+    }
+    return { id: 'n' + night, thread: 2, name: 'Night ' + night, length: 20, owl: false, water: { start: 2, max: 2, regen: 3 },
+      flowers: [F(2, 3, 0), F(3, 3, 1), F(4, 3, 2)], gusts: [], visits: [] };
+  }
+
   const THREADS = ['Thirst', 'The Owl', 'Glass'];
-  const API = { LEVELS, THREADS };
+  const BLURBS = ['Open means thirsty. Until it doesn’t.', 'A pass buys glass. You choose when to be checked.', 'The Owl passes the quiet ones.'];
+  const API = { LEVELS, THREADS, BLURBS, makeNight };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.HUSH_LEVELS = API;
 })(typeof window !== 'undefined' ? window : globalThis);
