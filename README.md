@@ -16,6 +16,12 @@ A small game built around two concepts, and a third that appears when they combi
   drowning silently in it. During an inspection the screen shows only what he can see, the sound rings, and quiet
   swimmers vanish from the picture. Calm water passes. Calm isn't safe.
 
+It looks like a cyanotype, a Prussian-blue sun print, and its sea is an engraving that listens. A live wave
+simulation bends the engraved lines wherever someone splashes or shouts, so a swimmer drowning silently sits in
+perfectly still lines. During an inspection the print flips to its negative: the Captain only reads the ripples.
+([Why this look](docs/process-v2/13-cyanotype.md).)
+
+![The title, printed in blue on the engraved sea](docs/screenshots/title.png)
 ![Someone yells for help: tap near them to throw the ring](docs/screenshots/help.png)
 ![The one you couldn't reach went quiet. Quiet is worse.](docs/screenshots/quiet.png)
 ![The whistle: everyone fine answers. The one who doesn't is drowning.](docs/screenshots/whistle.png)
@@ -25,7 +31,7 @@ A small game built around two concepts, and a third that appears when they combi
 **Put it in a LessWrong post:** paste [`dist/still-water-lw.html`](dist/still-water-lw.html) as plain text into a
 Custom Widget block (steps in [`10-lesswrong-widget`](docs/process-v2/10-lesswrong-widget.md#inserting-it-by-hand-lesswrong-editor)).
 
-**Play it:** open [`dist/still-water.html`](dist/still-water.html). It's one self-contained file, about 80 KB, and
+**Play it:** open [`dist/still-water.html`](dist/still-water.html). It's one self-contained file, about 100 KB, and
 works as a LessWrong post widget: sandboxed iframe, 340–700 px wide, auto height, no scroll trapping (on a phone,
 swipes scroll the post until you tap the game). Nine shifts in three threads (*Quiet*, *The Captain*, *Calm water*),
 plus *Endless summer*.

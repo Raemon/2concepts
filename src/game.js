@@ -6,6 +6,7 @@
   const DT = 0.05;
   const canvas = $('c'), stage = $('stage');
   const rend = SWRender.createRenderer(canvas);
+  const INK = SWRender.INK;
 
   let view = 'title';            // title | card | play | paused | result | menu
   let level = null, li = -1, st = null;
@@ -56,48 +57,48 @@
         case 'catch': {
           const q = at(e); fx('splash', { x: q.x, y: q.y, dur: 0.6 });
           SWAudio.play('splash'); SWAudio.play(e.quiet ? 'quietSave' : 'catch');
-          text(e, e.quiet ? `Quiet save! +${e.points}` : `+${e.points}`, e.quiet ? '#ffd166' : '#ffffff', e.quiet ? 16 : 14);
+          text(e, e.quiet ? `Quiet save! +${e.points}` : `+${e.points}`, e.quiet ? INK.yellow : INK.paper, e.quiet ? 16 : 14);
           break;
         }
-        case 'miss': { const q = at(e); fx('splash', { x: q.x, y: q.y, dur: 0.6 }); SWAudio.play('splash'); text(e, 'missed', 'rgba(255,255,255,0.8)', 12, 0.9); break; }
+        case 'miss': { const q = at(e); fx('splash', { x: q.x, y: q.y, dur: 0.6 }); SWAudio.play('splash'); text(e, 'missed', INK.paper, 12, 0.9); break; }
         case 'saved': {
           SWAudio.play('saved');
           const tw = rend.towerPx();
-          for (let k = 0; k < 14; k++) fx('confetti', { x: tw.x, y: tw.y - 20, vx: (Math.random() - 0.5) * 160, vy: -60 - Math.random() * 90, col: ['#ffd166', '#ff6b4a', '#3ddc97', '#ffffff'][k % 4], dur: 1.1 });
+          for (let k = 0; k < 14; k++) fx('confetti', { x: tw.x, y: tw.y - 20, vx: (Math.random() - 0.5) * 160, vy: -60 - Math.random() * 90, col: [INK.yellow, INK.red, INK.paper, INK.yellow][k % 4], dur: 1.1 });
           break;
         }
         case 'struggle':
           SWAudio.play('help');
-          if (level.id === 'first') lesson('tapHere', () => tag(e.who, 'tap near me!', '#ffd166', 3.5));
+          if (level.id === 'first') lesson('tapHere', () => tag(e.who, 'tap near me!', INK.prussian, 3.5));
           break;
         case 'quiet':
           if (e.fromStruggle) {
-            tag(e.who, 'went quiet…', '#ffb36b', 2.4);
-            lesson('foldback', () => { slow(1.8); banner('Quiet is worse', 'No strength left to shout. They’re drowning.', '#ffb36b', 3.6, e.who); });
+            tag(e.who, 'went quiet…', INK.red, 2.4);
+            lesson('foldback', () => { slow(1.8); banner('Quiet is worse', 'No strength left to shout. They’re drowning.', INK.red, 3.6, e.who); });
           }
           break;
         case 'reply':
           if (e.kind === 'none') {
             SWAudio.play('flag');
-            tag(e.who, 'no answer!', '#ff5a5f', 2.2);
-            lesson('flag', () => banner('No answer', 'Too busy trying to breathe. Throw it right on them.', '#ff5a5f', 3.4, e.who));
+            tag(e.who, 'no answer!', INK.red, 2.2);
+            lesson('flag', () => banner('No answer', 'Too busy trying to breathe. Throw it right on them.', INK.red, 3.4, e.who));
           }
           break;
         case 'whistle': SWAudio.play('whistle'); fx('whistle', { dur: 1.4 }); break;
         case 'lost': SWAudio.play('lost'); break;
-        case 'call': SWAudio.play('radio'); text({ x: 0.5, y: 0.93 }, 'Captain, come take a look!', '#ffffff', 12, 1.6); break;
+        case 'call': SWAudio.play('radio'); text({ x: 0.5, y: 0.93 }, 'Captain, come take a look!', INK.paper, 12, 1.6); break;
         case 'inspect': SWAudio.play('horn'); break;
-        case 'skip': text({ x: 0.75, y: 0.93 }, 'He trusts you: visit skipped', '#3ddc97', 13, 2); break;
+        case 'skip': text({ x: 0.75, y: 0.93 }, 'He trusts you: visit skipped', INK.paper, 13, 2); break;
         case 'strike':
           SWAudio.play('strike');
-          banner('Strike!', 'He saw someone yelling.', '#ff5a5f', 2.4);
+          banner('Strike!', 'He saw someone yelling.', INK.red, 2.4);
           break;
         case 'star':
           SWAudio.play('star'); SWAudio.play('stamp');
           fx('stamp', { dur: 1.8 });
           if (e.quiet && e.quiet.length) {
-            for (const w of e.quiet) tag(w, 'certified safe…', '#ff5a5f', 3);
-            lesson('certified', () => { slow(1.5); banner('Certified safe', 'He only saw calm water. Someone is drowning in it.', '#ff5a5f', 4, e.quiet[0]); });
+            for (const w of e.quiet) tag(w, 'certified safe…', INK.violet, 3);
+            lesson('certified', () => { slow(1.5); banner('Certified safe', 'He only saw calm water. Someone is drowning in it.', INK.violet, 4, e.quiet[0]); });
           }
           break;
         case 'over': onOver(); break;
@@ -129,12 +130,12 @@
     const playing = !!st && (view === 'play' || view === 'paused' || view === 'result' || view === 'card');
     const L = level;
     const hasCap = L && SW.hasCaptain(L);
-    $('whistleBtn').style.display = L && L.whistle === false ? 'none' : '';
+    $('whistleBtn').style.display = !L || L.whistle === false ? 'none' : '';
     $('whistleBtn').disabled = !(playing && view === 'play' && SW.canWhistle(st));
     const cd = playing ? Math.max(0, Math.min(1, (st.whistle.ready - st.t) / SW.RULES.whistleCooldown)) : 0;
     $('whistleBtn').querySelector('.cd').style.width = (cd * 100) + '%';
     const cb = $('callBtn');
-    cb.style.display = hasCap && L.canCall !== false ? '' : 'none';
+    cb.style.display = L && hasCap && L.canCall !== false ? '' : 'none';
     let label = 'Call Captain', trusted = false;
     if (playing && hasCap) {
       const C = st.captain;
@@ -172,8 +173,8 @@
     const p = local(e), w = rend.toWater(p.x, p.y);
     if (!w.inWater) return;
     e.preventDefault();
-    if (SW.inspecting(st)) { text(w, 'Not now: he’s inspecting', '#ffd166', 12, 1); return; }
-    if (!SW.canThrow(st)) { text(w, 'no ring ready', 'rgba(255,255,255,0.85)', 12, 0.8); return; }
+    if (SW.inspecting(st)) { text(w, 'Not now: he’s inspecting', INK.yellow, 12, 1); return; }
+    if (!SW.canThrow(st)) { text(w, 'no ring ready', INK.paper, 12, 0.8); return; }
     SW.throwRing(st, w.x, w.y);
     handleEvents();
   });
@@ -285,6 +286,7 @@
       SWAudio.play('fail');
     }
     $('rKicker').textContent = kicker;
+    $('rKicker').className = 'kicker' + (s.over === 'won' || L.endless ? '' : ' bad');
     $('rTitle').textContent = title;
     $('rStars').innerHTML = stars ? [1, 2, 3].map(i => i <= stars ? '★' : '<span class="off">★</span>').join('') : '';
     $('rStars').style.display = stars ? '' : 'none';
@@ -346,8 +348,8 @@
   // ---------- title screen: a calm beach behind the menu ----------
   function attract() {
     demo = { length: 1e9, rings: 1, swimmers: [
-      { kind: 'swimmer', x: 0.25, y: 0.55 }, { kind: 'treader', x: 0.7, y: 0.35 }, { kind: 'floater', x: 0.45, y: 0.7 },
-      { kind: 'swimmer', x: 0.8, y: 0.65 }, { kind: 'swimmer', x: 0.15, y: 0.25 }, { kind: 'treader', x: 0.55, y: 0.18 } ] };
+      { kind: 'swimmer', x: 0.16, y: 0.13 }, { kind: 'treader', x: 0.84, y: 0.17 }, { kind: 'floater', x: 0.1, y: 0.93 },
+      { kind: 'swimmer', x: 0.88, y: 0.92 }, { kind: 'swimmer', x: 0.5, y: 0.08 } ] };
     level = null; st = SW.init(demo);
   }
 
@@ -378,6 +380,9 @@
   sweepStrays();
   document.addEventListener('DOMContentLoaded', sweepStrays);
   window.addEventListener('load', sweepStrays);
+
+  // the canvas letters with the same faces as the page; ask for them early so the first frames don't fall back
+  try { for (const f of ['20px "IM Fell English SC"', 'italic 14px "IM Fell English"', '700 12px Archivo', '800 12px Archivo']) document.fonts.load(f); } catch (e) {}
 
   fit();
   attract();
