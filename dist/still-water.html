@@ -1489,6 +1489,22 @@ const SWAudio = (() => {
     canvasPoint(x, y) { const p = rend.toPx({ x, y }); const r = canvas.getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y }; },
   };
 
+  // Anything pasted around the widget code by accident (a line left over from an earlier paste, say) would show as
+  // text under the game. Keep only the game's own elements.
+  function sweepStrays() {
+    const keep = new Set(['SCRIPT', 'STYLE', 'LINK', 'META', 'TEMPLATE', 'NOSCRIPT']);
+    let n = 0;
+    for (const node of Array.from(document.body.childNodes)) {
+      const stray = node.nodeType === 3 ? !!node.textContent.trim()
+        : node.nodeType === 1 && !keep.has(node.tagName) && node.id !== 'sw' && node.id !== 'lw-widget-check';
+      if (stray) { node.remove(); n++; }
+    }
+    if (n) { try { console.warn(`Still Water: removed ${n} stray piece(s) of text pasted around the widget code`); } catch (e) {} Shell.reportHeight(); }
+  }
+  sweepStrays();
+  document.addEventListener('DOMContentLoaded', sweepStrays);
+  window.addEventListener('load', sweepStrays);
+
   fit();
   attract();
   Shell.watchHeight();

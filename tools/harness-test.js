@@ -25,5 +25,20 @@ const path = require('path');
     console.log(`width ${w}: reported height ${h}, inner ${JSON.stringify(inner)}, errors: ${errs.length ? errs.join(' | ') : 'none'}`);
     await page.close();
   }
+  // A leftover line from an earlier paste after the widget code (what a LessWrong post showed): it must not render.
+  {
+    const junk = '<div style="background:#ccc">&nbsp;&nbsp;const OWL_REST = 2;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// breaths the Owl rests after an inspection</div>leftover text';
+    const page = await browser.newPage({ viewport: { width: 732, height: 1100 } });
+    const errs = [];
+    page.on('pageerror', e => errs.push(e.message));
+    await page.goto('http://localhost:8765/tools/harness.html?src=' + encodeURIComponent(file) + '&append=' + encodeURIComponent(junk));
+    await page.waitForTimeout(1500);
+    const frame = page.frames().find(f => f !== page.mainFrame());
+    const left = await frame.evaluate(() => document.body.innerText.includes('OWL_REST') || document.body.innerText.includes('leftover text'));
+    const h = await page.evaluate(() => window.__widgetHeight);
+    console.log(`stray text after the code: ${left ? 'STILL VISIBLE' : 'removed'}, height ${h}, errors: ${errs.length ? errs.join(' | ') : 'none'}`);
+    if (left) process.exitCode = 1;
+    await page.close();
+  }
   await browser.close();
 })();

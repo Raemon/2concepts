@@ -17,11 +17,13 @@
 // Mimic the LessWrong editor: load content via srcdoc in a sandboxed iframe (no same-origin),
 // measure body.offsetHeight via an injected ResizeObserver, accept iframe-widget-resize messages.
 const src = new URLSearchParams(location.search).get('src');
+// optional: extra markup pasted after the widget code, to test leftovers from a bad paste
+const append = new URLSearchParams(location.search).get('append') || '';
 const f = document.getElementById('w');
 fetch(src).then(r=>r.text()).then(html=>{
   const inject = `<script>(function(){function send(){var b=document.body;if(!b)return;var cs=getComputedStyle(b);var h=b.offsetHeight+parseFloat(cs.marginTop)+parseFloat(cs.marginBottom);parent.postMessage({type:'harness-measure',height:h},'*');}
   window.addEventListener('load',send);try{new ResizeObserver(send).observe(document.documentElement);}catch(e){} setInterval(send,500);})();<\/script>`;
-  f.srcdoc = html.replace(/<\/body>/i, inject + '</body>');
+  f.srcdoc = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, append + inject + '</body>') : html + append + inject;
 });
 window.addEventListener('message', e=>{
   const d=e.data||{};
