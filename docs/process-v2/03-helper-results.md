@@ -149,3 +149,47 @@ clean, which are often more destructive, until someone builds a discriminator.
 - Risk: the inference branch is plain signaling and stigma. The concept is strongest if restricted to the
   physical, mechanical branch: the remedy's trace is indistinguishable from the malady's trace *to the
   instrument*.
+
+---
+
+## Property, water & probate law (50 structures; 48 killed, 2 weak survivors)
+
+There is a shared search limit (about 200 calls per turn, across all agents). This helper exhausted it, so
+several of its kills are from prior knowledge.
+
+**Representative kills:**
+- Wild deeds → practical obscurity.
+- Shelter rule → laundering.
+- Schodde (the incumbent's claim grows with its inefficiency) → hypersensitive-plaintiff rule (§821F).
+- Dwell-time thresholds → mere-conduit doctrine.
+- Specificatio → accession.
+- Accretion vs avulsion → salami tactics / chain drift.
+- Monuments control → Kripke's causal reference; nomenclatural types.
+- Crummey powers → Schelling.
+- Making rights tradable wakes dormant licences → "hot air" (provisional).
+
+**Survivor (weak): Re-utterance rebinding.** Reaffirming a document (re-executing, re-enacting, renewing,
+reinstalling) counts as saying it again. Every time-indexed term ("now", "my property", "current law", "latest")
+silently moves to the new date, so an act meant to change nothing changes substance.
+- *Cases:*
+  - Republication by codicil.
+  - The re-enactment canon (*Lorillard v. Pons*), with savings statutes enacted to block it.
+  - M&A bring-down conditions.
+  - English insurance renewal re-attaching the disclosure duty.
+  - Reinstalling without a lockfile re-resolves version ranges.
+- *Surplus:* undebated change concentrates in frequent, low-attention formalities, and anti-rebinding devices
+  spread (lockfiles, "as of" anchors).
+- *Nearest:* Kaplan's character/content; ratification; republication.
+- *Helper's estimate:* 35–40%.
+
+**Survivor (weak): Interests that live in the gap between two holders.** Some interests exist only while two
+layers are held by different parties; a merger silently kills them.
+- *Cases:* contingent remainders; anti-merger clauses; confusio; reverse triangular mergers.
+- *Nearest:* merger doctrine and confusio, which already state it generally.
+- *Helper's estimate:* 25–30%.
+
+**My reaction.**
+- *Re-utterance rebinding:* the mirror image of the first attempt's "Stale Here". There, labels freeze at coining;
+  here, reaffirming re-coins them. It's interesting that two independent searches keep finding time-indexed
+  reference. But that may be a shared attractor, and it's Kaplan plus ratification. Medium-weak.
+- *Gap interests:* killed as named.
