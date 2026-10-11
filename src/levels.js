@@ -1,119 +1,191 @@
-// HUSH level data.
-// flowers: kind 'fold' (opens with thirst, closes again as it wilts) or 'mono' (keeps opening until it dies),
-//          t = starting thirst 0..9, rate = breaths per thirst point, offset = phase of that rhythm.
-// gusts:   at breath `at`, flower `f` gains `amount` thirst (glass shelters it).
-// visits:  the Owl's patrol; at breath `at` it sets off for flower `f` and inspects it one breath later.
-// hidden:  flowers whose past is fogged; alternatives lists every hidden thirst the player must allow for.
+// STILL WATER levels. Three threads: Quiet (the fold-back signal), The Captain (refractory-check capture),
+// Calm water (certified collapse). Every level is checked by tools/check-levels.js.
+// Coordinates: x 0..1 across, y 0 (far out) .. 1 (the shoreline). Times in seconds.
 (function (root) {
   'use strict';
-  const F = (t, rate, offset = 0) => ({ kind: 'fold', t, rate, offset });
-  const M = (t, rate, offset = 0) => ({ kind: 'mono', t, rate, offset });
+  const S = (x, y, more) => Object.assign({ kind: 'swimmer', x, y }, more);
+  const T = (x, y, more) => Object.assign({ kind: 'treader', x, y }, more);
+  const F = (x, y, more) => Object.assign({ kind: 'floater', x, y }, more);
+  const Q = (x, y, more) => Object.assign({ kind: 'silent', x, y }, more);
 
-  const LEVELS = [
-    // ---------- Thread 1: Thirst (the fold-back signal) ----------
-    { id: 't1', thread: 0, name: 'Water', tutorial: true,
-      hint: 'Tap an open flower to water it.',
-      length: 16, water: { start: 2, max: 2, regen: 3 }, owl: false, stars: [1, 2],
-      flowers: [F(3, 3, 0), F(4, 3, 1), F(2, 3, 2)], gusts: [], visits: [] },
-    { id: 't2', thread: 0, name: 'Gust',
-      hint: 'Watch the wind.',
-      lose: 'The gust pushed it past its peak. It closed because it was wilting.',
-      length: 16, water: { start: 1, max: 1, regen: 5 }, owl: false, stars: [1, 1],
-      flowers: [F(2, 3, 0), F(5, 3, 1), F(4, 3, 2)], gusts: [{ at: 3, f: 1, amount: 4 }], visits: [] },
-    { id: 't3', thread: 0, name: 'Wilting',
-      hint: 'Read the smoke.',
-      lose: 'It was closing on its own. Nobody had watered it: it was wilting.',
-      labels: [{ f: 1, at: 0.62, text: 'wide open, a while ago' }, { f: 1, at: 0.08, text: 'closing on its own' }],
-      length: 20, water: { start: 1, max: 2, regen: 4 }, owl: false, stars: [1, 2],
-      flowers: [F(4, 3, 0), F(8, 3, 1), F(3, 3, 2)], gusts: [], visits: [] },
-    { id: 't4', thread: 0, name: 'Listen',
-      hint: 'One of these buds is dying.',
-      lose: 'Water one and watch: a dying bud opens when helped.',
-      length: 14, water: { start: 1, max: 2, regen: 3 }, owl: false, stars: [1, 2],
-      flowers: [F(1, 4, 0), F(1, 4, 1), F(3, 3, 2)], gusts: [], visits: [],
-      hidden: [0, 1], alternatives: [{ 0: 1, 1: 9 }, { 0: 9, 1: 1 }] },
-    { id: 't5', thread: 0, name: 'Storm',
-      hint: 'Quiet is not the same as calm.',
-      lose: 'A closed flower after a gust is the most urgent one.',
-      length: 26, water: { start: 2, max: 2, regen: 4 }, owl: false, stars: [1, 2],
-      flowers: [F(2, 3, 0), F(3, 3, 1), F(4, 3, 2), F(1, 3, 0), F(3, 3, 1)],
-      gusts: [{ at: 4, f: 2, amount: 4 }, { at: 11, f: 0, amount: 4 }, { at: 17, f: 4, amount: 4 }], visits: [] },
-
-    // ---------- Thread 2: The Owl (refractory-check capture), daisies that only open wider ----------
-    { id: 'o1', thread: 1, name: 'Inspection',
-      hint: 'Tap the Owl, then a flower that looks fine.',
-      lose: 'Send the Owl somewhere you look good, and it can’t be where you look bad.',
-      length: 16, water: { start: 0, max: 2, regen: 3 }, owl: true, stars: [2, 4],
-      flowers: [M(7, 3, 0), M(2, 3, 1), M(3, 3, 2)], gusts: [], visits: [{ at: 1, f: 0 }, { at: 9, f: 2 }] },
-    { id: 'o2', thread: 1, name: 'Clean first',
-      hint: 'A pass earns glass. Glass stops the frost.',
-      lose: 'Water it, then call the Owl. Passing buys glass before the frost.',
-      length: 16, water: { start: 1, max: 1, regen: 6 }, owl: true, stars: [2, 3],
-      flowers: [M(6, 3, 0), M(2, 3, 1), M(3, 4, 2)], gusts: [{ at: 4, f: 0, amount: 8 }], visits: [] },
-    { id: 'o3', thread: 1, name: 'Busy owl',
-      hint: 'A busy Owl misses its rounds.',
-      lose: 'Keep the Owl busy with flowers that pass.',
-      length: 20, water: { start: 0, max: 2, regen: 4 }, owl: true, stars: [3, 5],
-      flowers: [M(5, 3, 0), M(6, 3, 1), M(2, 3, 2), M(3, 3, 0)], gusts: [], visits: [{ at: 1, f: 1 }, { at: 4, f: 0 }, { at: 12, f: 3 }] },
-    { id: 'o4', thread: 1, name: 'Shelter',
-      hint: 'Glass shelters. Glass also shuts out water.',
-      lose: 'Under glass a flower still gets thirsty.',
-      length: 20, water: { start: 0, max: 1, regen: 4 }, owl: true, stars: [2, 4],
-      flowers: [M(3, 3, 0), M(4, 3, 1), M(4, 3, 2)], gusts: [{ at: 4, f: 1, amount: 5 }], visits: [{ at: 8, f: 2 }, { at: 14, f: 1 }] },
-
-    // ---------- Thread 3: Glass (certified collapse) ----------
-    { id: 'g1', thread: 2, name: 'Clean bill',
-      hint: 'The Owl only reads the bloom.',
-      lose: 'It passed because it was wilting. The glass sealed it away from water.',
-      labels: [{ f: 1, at: 0.1, text: 'quiet… but read its smoke' }],
-      length: 18, water: { start: 0, max: 2, regen: 4 }, owl: true, stars: [2, 3],
-      flowers: [F(2, 3, 0), F(8, 3, 0), F(3, 3, 2)], gusts: [], visits: [{ at: 2, f: 1 }, { at: 10, f: 2 }] },
-    { id: 'g2', thread: 2, name: 'Better looks worse',
-      hint: 'A wilting flower opens when you save it.',
-      lose: 'Saving it made it open, so the Owl saw distress. Keep the Owl busy while it recovers.',
-      length: 18, water: { start: 0, max: 1, regen: 4 }, owl: true, stars: [2, 3],
-      flowers: [F(2, 3, 0), F(4, 3, 1), F(3, 3, 2)], gusts: [{ at: 3, f: 1, amount: 4 }], visits: [{ at: 5, f: 1 }, { at: 12, f: 2 }] },
-    { id: 'g3', thread: 2, name: 'Certificates',
-      hint: 'Collect glass. Carefully.',
-      lose: 'A quiet flower passed and died under glass. That certificate was a symptom.',
-      length: 22, water: { start: 1, max: 2, regen: 4 }, owl: true, stars: [3, 5],
-      flowers: [F(3, 3, 0), F(8, 3, 1), F(3, 3, 2), F(5, 3, 0)], gusts: [{ at: 11, f: 2, amount: 4 }], visits: [{ at: 3, f: 3 }, { at: 12, f: 2 }] },
-    { id: 'g4', thread: 2, name: 'The quiet ones',
-      hint: 'The quietest flowers worry the Owl least.',
-      lose: 'The Owl passes the quiet ones. Some of them are the worst off.',
-      length: 26, water: { start: 1, max: 2, regen: 4 }, owl: true, stars: [3, 5],
-      flowers: [F(2, 3, 0), F(8, 3, 1), F(4, 3, 2), F(3, 3, 0), F(1, 3, 1)], gusts: [{ at: 8, f: 3, amount: 4 }, { at: 13, f: 0, amount: 4 }],
-      visits: [{ at: 3, f: 1 }, { at: 11, f: 3 }, { at: 19, f: 2 }] },
+  const THREADS = [
+    { id: 'quiet', name: 'Quiet', blurb: 'Drowning doesn’t look like drowning.' },
+    { id: 'captain', name: 'The Captain', blurb: 'He checks for noise. You choose when.' },
+    { id: 'calm', name: 'Calm water', blurb: 'The quietest beach passes every inspection.' },
   ];
 
-  // Endless night: generated gardens that get harder, each checked solvable before it is played.
-  function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
-  function makeNight(night, seed, feasible) {
-    const r = rng(seed * 7919 + night * 104729);
-    const pick = a => a[Math.floor(r() * a.length)];
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const n = Math.min(6, 3 + Math.floor((night - 1) / 3)), length = 24, flowers = [];
-      for (let i = 0; i < n; i++) {
-        const wilting = night >= 4 && r() < (night >= 7 ? 0.2 : 0.15);
-        flowers.push(F(wilting ? pick([7, 8]) : pick([0, 1, 2, 3]), pick([3, 4, 4]), Math.floor(r() * 4)));
-      }
-      const gusts = [];
-      const ng = Math.min(5, 1 + Math.floor((night - 1) / 2));
-      for (let k = 0; k < ng; k++) gusts.push({ at: 3 + Math.floor(r() * (length - 6)), f: Math.floor(r() * n), amount: 4 });
-      const owl = night >= 2, visits = [];
-      if (owl) { const nv = Math.min(4, 1 + Math.floor((night - 2) / 2)); for (let k = 0; k < nv; k++) visits.push({ at: 3 + Math.floor(r() * (length - 6)), f: Math.floor(r() * n) }); }
-      visits.sort((a, b) => a.at - b.at);
-      const level = { id: 'n' + night, thread: 2, name: 'Night ' + night, length, owl, flowers, gusts, visits, stars: [2, 4],
-        water: { start: 2, max: 2, regen: night <= 3 ? 3 : night <= 8 ? 4 : 5 },
-        hint: night === 1 ? 'Keep them all alive until dawn.' : night === 2 ? 'The Owl is awake.' : '' };
-      if (!feasible || feasible(level)) return level;
+  const LEVELS = [
+    // ---------------- Quiet ----------------
+    {
+      id: 'first', thread: 'quiet', name: 'First shift', length: 24, rings: 1, whistle: false,
+      intro: 'Someone yelling for help is in trouble. <b>Tap the water</b> next to them to throw the ring.',
+      swimmers: [
+        S(0.32, 0.62, { trouble: 1.5, struggle: 9 }),
+        S(0.70, 0.45, { trouble: 8, struggle: 9 }),
+        S(0.22, 0.30, { trouble: 13, struggle: 9 }),
+        S(0.62, 0.22, { trouble: 17.5, struggle: 9 }),
+        S(0.86, 0.72),
+        S(0.50, 0.40, { leave: 12 }),
+      ],
+    },
+    {
+      id: 'quiet', thread: 'quiet', name: 'Quiet', length: 24, rings: 1, whistle: false,
+      intro: 'Two at once, and you have one ring. Watch the one you can’t reach yet.',
+      swimmers: [
+        S(0.25, 0.62, { trouble: 3, struggle: 3, drown: 6 }),
+        S(0.80, 0.30, { trouble: 3.2, struggle: 2, drown: 6 }),
+        S(0.55, 0.45, { trouble: 12, struggle: 4, drown: 6 }),
+        S(0.15, 0.25, { trouble: 13, struggle: 2.5, drown: 5 }),
+        S(0.88, 0.70),
+        S(0.45, 0.20),
+      ],
+    },
+    {
+      id: 'waving', thread: 'quiet', name: 'Not waving', length: 26, rings: 1,
+      intro: 'Some people go under without a sound. <b>Blow the whistle</b>: everyone who’s fine waves back.',
+      swimmers: [
+        T(0.30, 0.36), T(0.72, 0.56), F(0.48, 0.64), T(0.88, 0.40),
+        Q(0.18, 0.20, { trouble: 4, drown: 6 }),
+        S(0.85, 0.15, { trouble: 4.5, struggle: 2, drown: 2.5 }),
+        Q(0.62, 0.28, { trouble: 13, drown: 7 }),
+        S(0.20, 0.68, { trouble: 14, struggle: 2.5, drown: 4 }),
+      ],
+    },
+    {
+      id: 'rush', thread: 'quiet', name: 'Rush hour', length: 32, rings: 2,
+      intro: 'Two rings now. Busy water, and not everyone in trouble will tell you.',
+      swimmers: [
+        S(0.25, 0.55, { trouble: 2, struggle: 3.5, drown: 5 }),
+        S(0.75, 0.50, { trouble: 2.5, struggle: 3, drown: 5 }),
+        S(0.50, 0.25, { trouble: 3, struggle: 2.5, drown: 5 }),
+        T(0.15, 0.30), F(0.62, 0.68), T(0.85, 0.25),
+        Q(0.38, 0.40, { trouble: 9, drown: 6 }),
+        S(0.80, 0.70, { trouble: 9.5, struggle: 3, drown: 5 }),
+        Q(0.70, 0.18, { trouble: 16, drown: 6 }),
+        S(0.12, 0.62, { trouble: 16.5, struggle: 2.5, drown: 5 }),
+        S(0.45, 0.60, { trouble: 17, struggle: 3, drown: 5 }),
+        Q(0.28, 0.15, { trouble: 23, drown: 5 }),
+        S(0.90, 0.45, { trouble: 23.5, struggle: 2.5, drown: 5 }),
+      ],
+    },
+    // ---------------- The Captain ----------------
+    {
+      id: 'inspect', thread: 'captain', name: 'Inspection', length: 30, rings: 1, strikes: 1, canCall: false,
+      captain: [12, 26],
+      intro: 'The Captain inspects your beach. Anyone <b>yelling</b> when he looks is a strike. Clear the water first.',
+      swimmers: [
+        S(0.30, 0.60, { trouble: 3, struggle: 8 }),
+        S(0.72, 0.40, { trouble: 6.5, struggle: 8 }),
+        S(0.20, 0.28, { trouble: 8.5, struggle: 8 }),
+        S(0.60, 0.22, { trouble: 19, struggle: 8 }),
+        S(0.40, 0.48, { trouble: 21.5, struggle: 8 }),
+        S(0.86, 0.70), T(0.12, 0.45),
+      ],
+    },
+    {
+      id: 'timing', thread: 'captain', name: 'Your timing', length: 34, rings: 1, strikes: 1, canCall: true,
+      captain: [24],
+      intro: 'A rush is coming right when he’s due. After a clean inspection he stays away a while. <b>Radio him in early.</b>',
+      swimmers: [
+        S(0.35, 0.58, { trouble: 3, struggle: 7 }),
+        S(0.15, 0.30, { trouble: 20.5, struggle: 7 }),
+        S(0.85, 0.25, { trouble: 21, struggle: 7 }),
+        S(0.55, 0.15, { trouble: 21.5, struggle: 7 }),
+        S(0.70, 0.62, { trouble: 22, struggle: 7 }),
+        T(0.45, 0.40), S(0.90, 0.75), S(0.10, 0.70, { leave: 18 }),
+      ],
+    },
+    {
+      id: 'twice', thread: 'captain', name: 'Twice', length: 46, rings: 1, strikes: 1, canCall: true,
+      captain: [16, 40],
+      intro: 'Two visits, two rushes. His trust runs out after 20 seconds.',
+      swimmers: [
+        S(0.30, 0.55, { trouble: 1.5, struggle: 6 }),
+        S(0.20, 0.30, { trouble: 13.5, struggle: 6 }),
+        S(0.80, 0.30, { trouble: 14, struggle: 6 }),
+        S(0.60, 0.60, { trouble: 15, struggle: 6 }),
+        S(0.45, 0.20, { trouble: 24, struggle: 6 }),
+        S(0.15, 0.62, { trouble: 37.5, struggle: 6 }),
+        S(0.75, 0.18, { trouble: 38, struggle: 6 }),
+        S(0.88, 0.55, { trouble: 39, struggle: 6 }),
+        T(0.50, 0.42), S(0.92, 0.80),
+      ],
+    },
+    // ---------------- Calm water ----------------
+    {
+      id: 'clean', thread: 'calm', name: 'Clean bill', length: 32, rings: 1, strikes: 1, canCall: true,
+      captain: [26],
+      intro: 'When the Captain looks, you see what he sees: <b>only noise</b>. Calm water isn’t the same as safe water.',
+      swimmers: [
+        S(0.60, 0.60, { trouble: 2, struggle: 6 }),
+        Q(0.20, 0.30, { trouble: 6, drown: 5 }),
+        S(0.75, 0.35, { trouble: 11.5, struggle: 5 }),
+        S(0.30, 0.55, { trouble: 13, struggle: 5 }),
+        S(0.85, 0.60, { trouble: 15, struggle: 5 }),
+        S(0.15, 0.42, { trouble: 17.5, struggle: 5 }),
+        S(0.60, 0.20, { trouble: 19.5, struggle: 5 }),
+        S(0.40, 0.30, { trouble: 21, struggle: 5 }),
+        S(0.72, 0.50, { trouble: 23.5, struggle: 5 }),
+        S(0.25, 0.20, { trouble: 25, struggle: 5 }),
+        T(0.55, 0.48), F(0.70, 0.72), T(0.10, 0.18),
+      ],
+    },
+    {
+      id: 'last', thread: 'calm', name: 'Last light', length: 50, rings: 2, strikes: 1, canCall: true,
+      captain: [20, 44],
+      intro: 'Everything at once. Keep them alive, keep him happy, and don’t believe the calm.',
+      swimmers: [
+        S(0.30, 0.55, { trouble: 2, struggle: 4, drown: 4 }),
+        S(0.70, 0.45, { trouble: 2.5, struggle: 3, drown: 4 }),
+        Q(0.50, 0.30, { trouble: 7, drown: 5 }),
+        T(0.15, 0.35), F(0.85, 0.65), T(0.62, 0.70), T(0.40, 0.18),
+        S(0.20, 0.25, { trouble: 18, struggle: 4 }),
+        S(0.80, 0.25, { trouble: 18.4, struggle: 4 }),
+        S(0.55, 0.62, { trouble: 18.8, struggle: 4 }),
+        S(0.10, 0.60, { trouble: 19.2, struggle: 4 }),
+        S(0.68, 0.40, { trouble: 19.5, struggle: 4 }),
+        Q(0.75, 0.15, { trouble: 27, drown: 5 }),
+        S(0.35, 0.40, { trouble: 30, struggle: 3, drown: 4 }),
+        S(0.25, 0.20, { trouble: 42, struggle: 4 }),
+        S(0.88, 0.40, { trouble: 42.4, struggle: 4 }),
+        S(0.60, 0.25, { trouble: 42.8, struggle: 4 }),
+        S(0.45, 0.65, { trouble: 43.2, struggle: 4 }),
+        S(0.12, 0.45, { trouble: 43.5, struggle: 4 }),
+      ],
+    },
+  ];
+
+  // ---------------- Endless summer ----------------
+  // A long, seeded day at the beach: swimmers arrive and leave, trouble comes faster as the day goes on, the Captain
+  // drops by every half minute or so. Three swimmers lost and the shift is over.
+  function endless(seed) {
+    let n = (seed >>> 0) || 1;
+    const rnd = () => { n = (n * 1664525 + 1013904223) >>> 0; return n / 4294967296; };
+    const sw = [];
+    const kinds = ['swimmer', 'swimmer', 'swimmer', 'treader', 'treader', 'floater'];
+    // regulars who never get in trouble keep the water busy
+    for (let i = 0; i < 5; i++) sw.push({ kind: kinds[i], x: 0.1 + 0.8 * rnd(), y: 0.15 + 0.6 * rnd(), leave: 30 + 60 * rnd() });
+    let t = 2;
+    while (t < 900) {
+      const pace = Math.max(1.8, 7 - t / 45);            // seconds between incidents, shrinking through the day
+      const silent = t > 25 && rnd() < Math.min(0.4, 0.12 + t / 600);
+      const x = 0.08 + 0.84 * rnd(), y = 0.1 + 0.65 * rnd();
+      const enter = Math.max(0, t - 4 - 6 * rnd());
+      if (silent) sw.push({ kind: 'silent', x, y, enter, trouble: t, drown: Math.max(3.5, 6 - t / 120) });
+      else sw.push({ kind: 'swimmer', x, y, enter, trouble: t, struggle: Math.max(2.5, 6 - t / 90), drown: Math.max(3.5, 5.5 - t / 150) });
+      // a calm swimmer arrives now and then, to be quiet and fine
+      if (rnd() < 0.45) sw.push({ kind: kinds[Math.floor(rnd() * kinds.length)], x: 0.08 + 0.84 * rnd(), y: 0.12 + 0.65 * rnd(), enter: t, leave: t + 15 + 30 * rnd() });
+      t += pace * (0.6 + 0.8 * rnd());
     }
-    return { id: 'n' + night, thread: 2, name: 'Night ' + night, length: 20, owl: false, water: { start: 2, max: 2, regen: 3 },
-      flowers: [F(2, 3, 0), F(3, 3, 1), F(4, 3, 2)], gusts: [], visits: [] };
+    const captain = [];
+    for (let c = 30 + 10 * rnd(); c < 900; c += 35 + 15 * rnd()) captain.push(+c.toFixed(1));
+    return { id: 'endless', thread: 'endless', name: 'Endless summer', endless: true, lives: 3, length: 1e9, rings: 2, strikes: 3, canCall: true, captain, swimmers: sw, seed };
   }
 
-  const THREADS = ['Thirst', 'The Owl', 'Glass'];
-  const BLURBS = ['Open means thirsty. Until it doesn’t.', 'A pass buys glass. You choose when to be checked.', 'The Owl passes the quiet ones.'];
-  const API = { LEVELS, THREADS, BLURBS, makeNight };
-  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.HUSH_LEVELS = API;
+  // Written by tools/check-levels.js: [points for 2 stars, points for 3 stars], from the solver's own score.
+  const STARS = { first: [420, 510], quiet: [430, 530], waving: [440, 540], rush: [1100, 1350], inspect: [590, 720], timing: [630, 770], twice: [890, 1090], clean: [1050, 1290], last: [1720, 2110] };
+  for (const L of LEVELS) if (STARS[L.id]) L.stars = STARS[L.id];
+
+  const API = { THREADS, LEVELS, endless };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.SWLevels = API;
 })(typeof window !== 'undefined' ? window : globalThis);

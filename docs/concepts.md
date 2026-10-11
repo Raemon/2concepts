@@ -1,4 +1,4 @@
-# The concepts behind HUSH
+# The concepts behind STILL WATER
 
 There are two concepts, plus a third that appears when they meet. The process that produced them, including the
 roughly 560 candidates that were killed along the way, is in [`process-v2/`](process-v2/).
@@ -132,8 +132,8 @@ shield.
   | Twelve months | Timing rules |
   | One session (a motion to reconsider) | Nothing |
 
-- **Occupying the checker.** The game surfaced this: an inspector busy with a check you invited can't be where you
-  look bad. It's the "torpedo" tactic of filing first in a slow court.
+- **Occupying the checker.** The first game (HUSH) surfaced this: an inspector busy with a check you invited can't
+  be where you look bad. It's the "torpedo" tactic of filing first in a slow court.
 
 **Nearest known ideas, and why it isn't them.**
 - **Sham-litigation and collusive-suit doctrines** (the *Noerr–Pennington* sham exception, *Lord v. Veazie*).
@@ -183,7 +183,7 @@ system that *volunteers* for inspection is showing a symptom.
 - **The longest immunity windows produce the largest collapses.**
 - **"Getting better looks worse."** Help re-opens the signal, so a regime that inspects the signal punishes
   recovery. The rational response is to keep the inspector busy while a system recovers. This came out of the
-  game's rules; I didn't design it in.
+  first game's (HUSH's) rules; I didn't design it in.
 
 **Nearest known ideas.** "False reassurance", "the calm before the storm", Minsky's "stability is destabilizing",
 "watermelon" status reports (green outside, red inside). None of them contains the mechanism: a non-monotonic

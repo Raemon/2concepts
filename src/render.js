@@ -1,553 +1,467 @@
-// HUSH renderer. Every flower's signal history rises from it as a thread of smoke: the thread's width at each
-// height is how open the flower was at that past moment. Reading the garden means reading those shapes.
+// STILL WATER renderer. Top-down beach. Every splash and shout sends rings across the water, so the sea is a map
+// of noise, and a swimmer in real trouble shows up as a hole in it. During an inspection the picture switches to
+// what the Captain can see: only the rings.
 (function (root) {
   'use strict';
-
-  const PAL = {
-    skyTop: [11, 15, 34], skyMid: [24, 28, 58], skyLow: [17, 24, 48],
-    dawnTop: [58, 64, 112], dawnMid: [196, 132, 140], dawnLow: [246, 196, 150],
-    ink: [201, 209, 239], pale: [176, 186, 214], accent: [255, 106, 92], water: [143, 216, 255], gold: [255, 210, 122],
-    daisy: [255, 196, 96],
-  };
-  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-  const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+  const SW = root.SW;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const ease = t => t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const hash = SW.hash;
 
-  function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  const SKIN = ['#f1c7a3', '#d9a27e', '#a86f4c', '#7a4a2f', '#f4d2b8', '#c68b63'];
+  const HAIR = ['#2b2018', '#6b3e1f', '#d9b25e', '#1c1c1c', '#9a4a26', '#4a3a2a'];
+  const CAP = ['#ff5a5f', '#ffd166', '#06d6a0', '#118ab2', '#ef476f', '#8338ec', '#fb8500'];
 
   function createRenderer(canvas) {
     const ctx = canvas.getContext('2d');
-    let W = 0, H = 0, dpr = 1;
-    const L = {};             // layout
-    let starField = [];
-    let grain = null;
-    function makeGrain() {
-      try {
-        const g = document.createElement('canvas'); g.width = g.height = 256;
-        const gc = g.getContext('2d'), img = gc.createImageData(256, 256);
-        for (let i = 0; i < img.data.length; i += 4) { const v = 128 + (Math.random() - 0.5) * 70; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
-        gc.putImageData(img, 0, 0);
-        gc.strokeStyle = 'rgba(255,255,255,0.25)'; gc.lineWidth = 0.6;
-        for (let k = 0; k < 40; k++) { const x = Math.random() * 256, y = Math.random() * 256, a = Math.random() * 6.28, l = 6 + Math.random() * 18; gc.beginPath(); gc.moveTo(x, y); gc.quadraticCurveTo(x + Math.cos(a + 0.5) * l / 2, y + Math.sin(a + 0.5) * l / 2, x + Math.cos(a) * l, y + Math.sin(a) * l); gc.stroke(); }
-        grain = ctx.createPattern(g, 'repeat');
-      } catch (e) { grain = null; }
-    }
-    function paper() {
-      if (!grain) makeGrain();
-      if (grain) { ctx.save(); ctx.globalAlpha = 0.06; ctx.globalCompositeOperation = 'overlay'; ctx.fillStyle = grain; ctx.fillRect(0, 0, W, H); ctx.restore(); }
-      const v = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.35, W / 2, H * 0.5, Math.max(W, H) * 0.75);
-      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(4,6,16,0.45)');
-      ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
-    }
+    let W = 0, H = 0, waterH = 0, dpr = 1;
+    const noise = [];                 // sound rings on the water: {x,y,t0,r,str}
+    const decor = [];
 
     function resize(cssW) {
       dpr = Math.min(2.5, root.devicePixelRatio || 1);
-      W = Math.round(cssW); H = Math.round(cssW * 1.04);
+      W = Math.round(cssW); H = Math.round(cssW * (cssW < 480 ? 1.12 : 0.92));
+      waterH = Math.round(H * 0.8);
       canvas.style.height = H + 'px';
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      L.u = W / 100;
-      L.headY = H * 0.74; L.stemBase = H * 0.90; L.pondY = H * 0.86;
-      L.threadTop = H * 0.12;
-      L.perch = { x: W * 0.86, y: H * 0.15 };
-      starField = [];
-      for (let i = 0; i < 70; i++) starField.push({ x: hash(i) * W, y: hash(i + 99) * H * 0.62, r: 0.4 + hash(i + 7) * 1.1, p: hash(i + 3) * 6.28 });
+      decor.length = 0;
+      // towels and umbrellas, keeping the middle of the sand clear for the tower and the Captain's jeep
+      const spots = [[0.06, 0.7], [0.17, 0.3], [0.28, 0.75], [0.8, 0.35], [0.9, 0.78], [0.97, 0.25], [0.36, 0.25]];
+      spots.forEach(([u, v], i) => decor.push({ x: u * W, y: waterH + 14 + v * (H - waterH - 30), c: CAP[i % CAP.length], k: hash(i + 4) }));
     }
+    const px = p => ({ x: p.x * W, y: p.y * waterH });
+    // logic distances are in water units, so a reach circle is an ellipse on screen
+    function reachPath(x, y, r) { ctx.beginPath(); ctx.ellipse(x, y, r * W, r * waterH, 0, 0, 6.283); }
+    const towerPx = () => ({ x: W * 0.5, y: waterH + (H - waterH) * 0.42 });
+    const scale = () => clamp(W / 360, 0.95, 1.6);
 
-    function flowerX(i, n) {
-      const left = 0.15, right = 0.85;
-      return W * (n === 1 ? 0.5 : left + (right - left) * i / (n - 1));
-    }
-    function radius(n) { return Math.min(clamp(W / (n * 2.5), 20, 46), W * 0.125); }
-
-    // ---------- background ----------
-    function sky(t, dawn, night) {
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, rgba(mix(PAL.skyTop, PAL.dawnTop, dawn), 1));
-      g.addColorStop(0.55, rgba(mix(PAL.skyMid, PAL.dawnMid, dawn), 1));
-      g.addColorStop(1, rgba(mix(PAL.skyLow, PAL.dawnLow, dawn * 0.8), 1));
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      for (const s of starField) {
-        const a = (0.35 + 0.35 * Math.sin(t * 1.3 + s.p)) * (1 - dawn);
-        ctx.fillStyle = rgba(PAL.ink, a); ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill();
-      }
-      // moon
-      const prog = night == null ? 0.05 : clamp(night, 0, 1);
-      const mx = W * (0.10 + 0.62 * prog), my = H * (0.15 - 0.06 * Math.sin(prog * Math.PI)), mr = W * 0.045;
-      const halo = ctx.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 5);
-      halo.addColorStop(0, rgba([230, 232, 255], 0.22 * (1 - dawn * 0.7)));
-      halo.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(mx, my, mr * 5, 0, 6.283); ctx.fill();
-      {
-        // crescent: the outer disc minus an offset disc, traced along both arcs
-        const bx = mx + mr * 0.42, by = my - mr * 0.18, br = mr * 0.9;
-        const d = Math.hypot(bx - mx, by - my), a = Math.atan2(by - my, bx - mx);
-        const cosA = (mr * mr + d * d - br * br) / (2 * mr * d), alpha = Math.acos(clamp(cosA, -1, 1));
-        const cosB = (br * br + d * d - mr * mr) / (2 * br * d), beta = Math.acos(clamp(cosB, -1, 1));
-        ctx.fillStyle = rgba([236, 238, 255], 0.92 - dawn * 0.5);
+    // ---------- the sea ----------
+    function sea(t, vision) {
+      const g = ctx.createLinearGradient(0, 0, 0, waterH);
+      g.addColorStop(0, vision ? '#0c1d2b' : '#1b6f9c');
+      g.addColorStop(0.55, vision ? '#0f2433' : '#2a9cc0');
+      g.addColorStop(1, vision ? '#14303f' : '#5fd0d6');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, waterH);
+      if (vision) return;
+      // swells rolling toward shore
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1.4 * scale();
+      for (let k = 0; k < 9; k++) {
+        const y = ((k / 9 + t * 0.018) % 1) * waterH;
         ctx.beginPath();
-        ctx.arc(mx, my, mr, a + alpha, a - alpha + 6.283);
-        ctx.arc(bx, by, br, a + Math.PI + beta, a + Math.PI - beta, true);
-        ctx.closePath(); ctx.fill();
-      }
-      // ink hills
-      for (let k = 0; k < 3; k++) {
-        ctx.fillStyle = rgba(mix([20, 24, 52], [120, 92, 120], dawn), 0.35 + k * 0.12);
-        ctx.beginPath(); ctx.moveTo(0, H);
-        const base = H * (0.66 + k * 0.06);
-        for (let x = 0; x <= W; x += W / 24) {
-          const y = base - (Math.sin(x / W * (3 + k) + k * 2) * 0.5 + 0.5) * H * (0.07 - k * 0.015) - hash(Math.floor(x) + k * 50) * 2;
-          ctx.lineTo(x, y);
+        for (let x = -10; x <= W + 10; x += 12) {
+          const yy = y + Math.sin(x * 0.03 + k * 1.7 + t * 0.6) * 3 + Math.sin(x * 0.011 + k) * 5;
+          x === -10 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
         }
-        ctx.lineTo(W, H); ctx.fill();
-      }
-    }
-
-    function branch() {
-      const p = L.perch;
-      ctx.strokeStyle = rgba([40, 36, 52], 0.95); ctx.lineCap = 'round';
-      ctx.lineWidth = L.u * 1.6;
-      ctx.beginPath(); ctx.moveTo(W + 4, p.y + L.u * 5.5); ctx.quadraticCurveTo(W * 0.92, p.y + L.u * 4.8, W * 0.74, p.y + L.u * 6.6); ctx.stroke();
-      ctx.lineWidth = L.u * 0.7;
-      ctx.beginPath(); ctx.moveTo(W * 0.80, p.y + L.u * 6.0); ctx.quadraticCurveTo(W * 0.77, p.y + L.u * 3.5, W * 0.72, p.y + L.u * 2.4); ctx.stroke();
-      ctx.fillStyle = rgba([34, 40, 54], 0.9);
-      for (let i = 0; i < 5; i++) {
-        const lx = W * (0.73 + i * 0.05), ly = p.y + L.u * (6.2 + (i % 2) * 0.8);
-        ctx.beginPath(); ctx.ellipse(lx, ly, L.u * 1.6, L.u * 0.6, 0.5 + i, 0, 6.283); ctx.fill();
-      }
-    }
-
-    function pond(t, dawn) {
-      const g = ctx.createLinearGradient(0, L.pondY, 0, H);
-      g.addColorStop(0, rgba(mix([14, 22, 46], [90, 80, 110], dawn), 0.96));
-      g.addColorStop(1, rgba(mix([8, 12, 28], [60, 56, 84], dawn), 1));
-      ctx.fillStyle = g; ctx.fillRect(0, L.pondY, W, H - L.pondY);
-      ctx.strokeStyle = rgba(PAL.ink, 0.08);
-      ctx.lineWidth = 1;
-      for (let k = 0; k < 7; k++) {
-        const y = L.pondY + 4 + k * (H - L.pondY) / 7;
-        ctx.beginPath();
-        for (let x = 0; x <= W; x += 8) ctx.lineTo(x, y + Math.sin(x * 0.05 + t * 0.8 + k) * 1.2);
+        ctx.globalAlpha = 0.35 + 0.65 * (y / waterH);
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
+      // sparkle
+      for (let i = 0; i < 26; i++) {
+        const x = hash(i * 3.1) * W, y = hash(i * 7.7) * waterH * 0.9;
+        const a = Math.max(0, Math.sin(t * 1.7 + i * 2.3)) * 0.55;
+        ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, 2 * scale(), 2 * scale());
+      }
     }
 
-    // ---------- smoke threads ----------
-    function thread(v, i, n, t, breathT) {
-      const f = v.flowers[i];
-      const x0 = flowerX(i, n), r = radius(n);
-      const y0 = L.headY - r * 0.6;
-      const hist = f.hist;
-      const span = 14;                       // breaths of history shown
-      const step = (y0 - L.threadTop) / span;
-      const pts = [];
-      for (let k = hist.length - 1; k >= 0; k--) {
-        const age = (hist.length - 1 - k) + breathT;
-        if (age > span + 1) break;
-        const s = hist[k];
-        const y = y0 - age * step;
-        const sway = Math.sin(t * 0.7 + age * 0.55 + i * 1.7) * age * 0.55 * L.u * 0.25 + (s.jog || 0);
-        pts.push({ x: x0 + sway, y, s, age });
-      }
-      if (pts.length < 2) return;
-      const fadeTop = a => clamp(1 - (a - span + 6) / 6, 0, 1);
-      // Smooth the samples (Catmull-Rom) and draw the thread as a ribbon whose width follows the bloom.
-      const dense = [];
-      for (let k = 0; k < pts.length - 1; k++) {
-        const p0 = pts[Math.max(0, k - 1)], p1 = pts[k], p2 = pts[k + 1], p3 = pts[Math.min(pts.length - 1, k + 2)];
-        for (let j = 0; j < 4; j++) {
-          const u = j / 4, u2 = u * u, u3 = u2 * u;
-          const cr = (a, b, c, d) => 0.5 * ((2 * b) + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u2 + (-a + 3 * b - 3 * c + d) * u3);
-          dense.push({ x: cr(p0.x, p1.x, p2.x, p3.x), y: cr(p0.y, p1.y, p2.y, p3.y),
-            o: p1.s.b + (p2.s.b - p1.s.b) * u, age: p1.age + (p2.age - p1.age) * u,
-            hide: (p1.s.fog || p2.s.fog) ? 1 : (p1.s.glass || p2.s.glass) ? 0.85 : 0 });
-        }
-      }
-      dense.push({ x: pts[pts.length - 1].x, y: pts[pts.length - 1].y, o: pts[pts.length - 1].s.b, age: pts[pts.length - 1].age, hide: pts[pts.length - 1].s.fog ? 1 : 0 });
-      const ribbon = (widthOf, alphaOf, blur) => {
-        const left = [], right = [];
-        for (let k = 0; k < dense.length; k++) {
-          const a = dense[Math.max(0, k - 1)], b = dense[Math.min(dense.length - 1, k + 1)];
-          let nx = -(b.y - a.y), ny = b.x - a.x; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
-          const w = widthOf(dense[k]) / 2;
-          left.push([dense[k].x + nx * w, dense[k].y + ny * w]); right.push([dense[k].x - nx * w, dense[k].y - ny * w]);
-        }
-        const g = ctx.createLinearGradient(0, dense[0].y, 0, dense[dense.length - 1].y);
-        const yspan = (dense[dense.length - 1].y - dense[0].y) || 1;
-        for (let k = 0; k < dense.length; k += 2) {
-          const d = dense[k], pos = clamp((d.y - dense[0].y) / yspan, 0, 1);
-          g.addColorStop(pos, rgba(mix(PAL.pale, PAL.accent, d.o), alphaOf(d) * fadeTop(d.age) * (1 - d.hide)));
-        }
-        if (blur && ctx.filter !== undefined) ctx.filter = `blur(${blur}px)`;
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.moveTo(left[0][0], left[0][1]);
-        for (const q of left) ctx.lineTo(q[0], q[1]);
-        for (let k = right.length - 1; k >= 0; k--) ctx.lineTo(right[k][0], right[k][1]);
-        ctx.closePath(); ctx.fill();
-        if (blur && ctx.filter !== undefined) ctx.filter = 'none';
-      };
-      const ws = L.u * 0.3;
-      const taper = d => 0.35 + 0.65 * fadeTop(d.age);
-      ribbon(d => (4 + d.o * 22 + d.age * 0.5) * ws * taper(d), d => 0.10 + 0.20 * d.o, Math.max(2, L.u * 0.9));
-      ribbon(d => (1.2 + d.o * 9) * ws * taper(d), d => 0.38 + 0.55 * d.o, 0);
-      ribbon(d => (0.5 + d.o * 2.5) * ws * taper(d), d => 0.25 + 0.5 * d.o, 0);
-      // marks on the thread: water beads, gusts, inspections
-      for (const p of pts) {
-        if (p.s.fog) continue;
-        const fade = fadeTop(p.age);
-        if (p.s.water) {
-          ctx.fillStyle = rgba(PAL.water, 0.9 * fade);
-          ctx.beginPath(); ctx.arc(p.x, p.y, L.u * 0.85, 0, 6.283); ctx.fill();
-          ctx.strokeStyle = rgba(PAL.water, 0.35 * fade); ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.arc(p.x, p.y, L.u * 1.6, 0, 6.283); ctx.stroke();
-        }
-        if (p.s.gust) {
-          ctx.strokeStyle = rgba(PAL.ink, 0.7 * fade); ctx.lineWidth = 1.2;
-          ctx.beginPath(); ctx.moveTo(p.x - L.u * 3.2, p.y - L.u * 0.6);
-          ctx.bezierCurveTo(p.x - L.u * 1.5, p.y - L.u * 1.4, p.x - L.u * 0.4, p.y + L.u * 0.6, p.x + L.u * 1.4, p.y - L.u * 0.2); ctx.stroke();
-          ctx.fillStyle = rgba([150, 170, 120], 0.8 * fade);
-          ctx.beginPath(); ctx.ellipse(p.x - L.u * 3.4, p.y - L.u * 0.6, L.u * 0.9, L.u * 0.4, -0.6, 0, 6.283); ctx.fill();
-        }
-        if (p.s.pass) {
-          ctx.strokeStyle = rgba(PAL.gold, 0.9 * fade); ctx.lineWidth = 1.4;
-          ctx.beginPath(); ctx.arc(p.x, p.y, L.u * 1.3, 0, 6.283); ctx.stroke();
-        }
-        if (p.s.caught) {
-          ctx.strokeStyle = rgba(PAL.accent, 0.95 * fade); ctx.lineWidth = 1.6;
-          ctx.beginPath(); ctx.moveTo(p.x - L.u, p.y - L.u); ctx.lineTo(p.x + L.u, p.y + L.u); ctx.moveTo(p.x + L.u, p.y - L.u); ctx.lineTo(p.x - L.u, p.y + L.u); ctx.stroke();
-        }
-      }
-      // fog over a hidden past
-      if (f.fogUntil != null) {
-        const fogTop = L.threadTop, fogBottom = y0 - (hist.length - 1 - f.fogUntil + breathT) * step;
-        if (fogBottom > fogTop) {
-          for (let k = 0; k < 9; k++) {
-            const yy = fogTop + (fogBottom - fogTop) * (k + 0.5) / 9 + Math.sin(t * 0.4 + k) * 4;
-            const xx = x0 + Math.sin(t * 0.3 + k * 1.7) * r * 0.35;
-            const rr = r * (0.7 + 0.3 * hash(i * 10 + k));
-            const g = ctx.createRadialGradient(xx, yy, 0, xx, yy, rr);
-            g.addColorStop(0, 'rgba(150,160,200,0.20)'); g.addColorStop(1, 'rgba(150,160,200,0)');
-            ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(xx, yy, rr, rr * 0.55, 0, 0, 6.283); ctx.fill();
+    function sand(t) {
+      const top = waterH;
+      const g = ctx.createLinearGradient(0, top, 0, H);
+      g.addColorStop(0, '#f3d9a4'); g.addColorStop(1, '#e9c584');
+      ctx.fillStyle = g; ctx.fillRect(0, top, W, H - top);
+      // wet sand and foam line
+      ctx.fillStyle = 'rgba(190,150,90,0.35)';
+      ctx.beginPath(); ctx.moveTo(0, top);
+      for (let x = 0; x <= W; x += 10) ctx.lineTo(x, top + 8 + Math.sin(x * 0.04 + t * 0.9) * 3);
+      ctx.lineTo(W, top); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3 * scale();
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 8) { const y = top + 2 + Math.sin(x * 0.05 + t * 1.2) * 2.5; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+      // towels and umbrellas
+      for (const d of decor) {
+        ctx.save(); ctx.translate(d.x, d.y); ctx.rotate((d.k - 0.5) * 0.6);
+        ctx.fillStyle = d.c; ctx.globalAlpha = 0.85; ctx.fillRect(-12 * scale(), -6 * scale(), 24 * scale(), 12 * scale());
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(-12 * scale(), -1.5 * scale(), 24 * scale(), 3 * scale());
+        ctx.restore();
+        if (d.k > 0.5) {
+          ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.ellipse(d.x + 10, d.y + 8, 18 * scale(), 9 * scale(), 0, 0, 6.283); ctx.fill();
+          for (let s = 0; s < 8; s++) {
+            ctx.fillStyle = s % 2 ? '#ffffff' : d.c;
+            ctx.beginPath(); ctx.moveTo(d.x + 4, d.y - 4); ctx.arc(d.x + 4, d.y - 4, 16 * scale(), s * 0.785, (s + 1) * 0.785); ctx.fill();
           }
         }
       }
     }
 
-    // ---------- flowers ----------
-    function stem(x, r, f, t) {
-      const droop = f.deadT != null ? ease((t - f.deadT) / 0.8) : 0;
-      const sway = Math.sin(t * 0.9 + x * 0.03) * r * 0.06 + (f.jolt || 0) * r * 0.5;
-      const hx = x + sway + droop * r * 0.7, hy = L.headY + droop * r * 0.9;
-      ctx.strokeStyle = rgba(mix([92, 128, 110], [90, 90, 96], droop), 0.95);
-      ctx.lineWidth = Math.max(2, r * 0.09); ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(x, L.stemBase); ctx.quadraticCurveTo(x - r * 0.15, (L.stemBase + hy) / 2, hx, hy); ctx.stroke();
-      ctx.fillStyle = rgba([70, 108, 92], 0.95);
-      ctx.beginPath(); ctx.ellipse(x - r * 0.38, L.stemBase - r * 0.42, r * 0.42, r * 0.14, -0.5, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(x + r * 0.34, L.stemBase - r * 0.68, r * 0.36, r * 0.12, 0.6, 0, 6.283); ctx.fill();
-      // pad on the water
-      ctx.fillStyle = rgba([22, 48, 56], 0.9);
-      ctx.beginPath(); ctx.ellipse(x, L.stemBase + r * 0.05, r * 0.95, r * 0.22, 0, 0.25, 6.0); ctx.fill();
-      return { hx, hy };
-    }
-
-    function head(hx, hy, r, f, t) {
-      const o = clamp(f.shown, 0, 1.08);          // displayed openness (springs slightly past 1)
-      const oc = Math.min(1, o);
-      const dead = f.deadT != null;
-      const fold = f.kind === 'fold';
-      const petals = fold ? 7 : 13;
-      const col = dead ? [96, 96, 104] : mix(fold ? PAL.pale : [214, 214, 196], PAL.accent, oc);
-      // glow
-      if (!dead && o > 0.05) {
-        const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, r * (1.2 + o * 1.4));
-        g.addColorStop(0, rgba(PAL.accent, 0.28 * oc)); g.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, r * (1.2 + o * 1.4), 0, 6.283); ctx.fill();
-      }
-      const spread = 0.12 + 0.88 * o;
-      for (let k = 0; k < petals; k++) {
-        const u = petals === 1 ? 0 : k / (petals - 1) - 0.5;          // -0.5..0.5
-        const ang = u * Math.PI * 1.7 * spread + Math.sin(t * 1.1 + k) * 0.02;
-        const len = r * (fold ? 0.62 + 0.38 * o : 0.5 + 0.3 * o);
-        const wid = r * (fold ? 0.22 : 0.10);
-        ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang);
-        const shade = 0.85 + 0.15 * Math.cos(u * 3);
-        ctx.fillStyle = rgba(col.map(c => c * shade), dead ? 0.7 : 0.96);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.quadraticCurveTo(-wid, -len * 0.55, 0, -len);
-        ctx.quadraticCurveTo(wid, -len * 0.55, 0, 0);
-        ctx.fill();
-        ctx.restore();
-      }
-      // heart
-      ctx.fillStyle = dead ? 'rgba(70,70,76,0.9)' : rgba(fold ? mix([255, 220, 200], PAL.accent, o * 0.5) : PAL.daisy, 0.95);
-      ctx.beginPath(); ctx.arc(hx, hy, r * (0.12 + 0.06 * o), 0, 6.283); ctx.fill();
-    }
-
-    function cloche(hx, hy, r, f, t) {
-      const left = f.cloche, total = 6;
-      const w = r * 1.08, top = hy - r * 1.45, base = hy + r * 0.55;
-      ctx.save();
-      // trapped smoke coiling inside the glass
-      ctx.strokeStyle = rgba(mix(PAL.pale, PAL.accent, f.shown), 0.22);
-      ctx.lineWidth = r * 0.12;
-      ctx.beginPath();
-      for (let k = 0; k <= 40; k++) {
-        const a = k / 40 * 6.283 * 2 + t * 0.8;
-        const rr = r * (0.25 + 0.5 * k / 40);
-        const xx = hx + Math.cos(a) * rr * 0.8, yy = hy - r * 0.55 + Math.sin(a) * rr * 0.45 - k / 40 * r * 0.3;
-        k ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy);
-      }
-      ctx.stroke();
-      // the dome
-      ctx.beginPath();
-      ctx.moveTo(hx - w, base);
-      ctx.lineTo(hx - w, hy - r * 0.3);
-      ctx.bezierCurveTo(hx - w, top, hx + w, top, hx + w, hy - r * 0.3);
-      ctx.lineTo(hx + w, base);
-      ctx.fillStyle = 'rgba(200,220,255,0.07)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(225,235,255,0.55)'; ctx.lineWidth = 1.4; ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = r * 0.06;
-      ctx.beginPath(); ctx.moveTo(hx - w * 0.62, hy - r * 0.1); ctx.quadraticCurveTo(hx - w * 0.62, hy - r * 0.95, hx - w * 0.2, top + r * 0.22); ctx.stroke();
-      ctx.fillStyle = 'rgba(225,235,255,0.6)'; ctx.beginPath(); ctx.arc(hx, top + r * 0.05, r * 0.09, 0, 6.283); ctx.fill();
-      if (f.underGlass) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1;
-        const cx = hx + w * 0.3, cy = hy - r * 0.6;
-        for (let k = 0; k < 7; k++) {
-          const a = k * 0.9 + 0.2, l = r * (0.35 + 0.25 * hash(k + 3));
-          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * l * 0.5, cy + Math.sin(a) * l * 0.5 + 2); ctx.lineTo(cx + Math.cos(a) * l, cy + Math.sin(a) * l); ctx.stroke();
+    function tower(t, state, vision) {
+      const p = towerPx(), s = scale();
+      ctx.save(); ctx.translate(p.x, p.y);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.ellipse(6, 20 * s, 30 * s, 10 * s, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#d64545'; ctx.fillRect(-22 * s, -14 * s, 44 * s, 30 * s);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-22 * s, -2 * s, 44 * s, 6 * s);
+      ctx.fillStyle = '#b83232'; ctx.beginPath(); ctx.moveTo(-28 * s, -14 * s); ctx.lineTo(0, -26 * s); ctx.lineTo(28 * s, -14 * s); ctx.fill();
+      // the lifeguard
+      const busy = state && SW.inspecting(state);
+      ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.arc(0, -4 * s, 8 * s, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#f1c7a3'; ctx.beginPath(); ctx.arc(0, -9 * s, 5.5 * s, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#2b2018'; ctx.beginPath(); ctx.arc(0, -11 * s, 5.5 * s, Math.PI, 0); ctx.fill();
+      if (busy) { ctx.fillStyle = '#333'; ctx.font = `${Math.round(10 * s)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('…', 0, -22 * s); ctx.textAlign = 'start'; }
+      // rings waiting on the tower
+      if (state) {
+        const ready = state.rings.filter(r => r.mode === 'ready').length;
+        for (let k = 0; k < state.rings.length; k++) {
+          const rx = (-14 + k * 14 - (state.rings.length - 1) * 7 + 14) * s, ry = 10 * s;
+          ctx.globalAlpha = k < ready ? 1 : 0.25;
+          ringShape(rx, ry, 6 * s);
+          ctx.globalAlpha = 1;
         }
-        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    function ringShape(x, y, r) {
+      ctx.lineWidth = r * 0.55;
+      for (let q = 0; q < 4; q++) {
+        ctx.strokeStyle = q % 2 ? '#ffffff' : '#ff3b3b';
+        ctx.beginPath(); ctx.arc(x, y, r, q * 1.5708, (q + 1) * 1.5708); ctx.stroke();
+      }
+    }
+
+    // ---------- noise rings ----------
+    function emitNoise(state, t) {
+      for (const s of state.swimmers) {
+        const p = px(s);
+        const k = s.id * 1.37;
+        let every = 0, str = 0;
+        if (s.state === 'struggle') { every = 0.22; str = 1; }
+        else if (s.state === 'swim' && s.kind === 'swimmer') { every = 1.1; str = 0.35; }
+        else if (s.state === 'swim' && s.kind !== 'floater') { every = 2.4; str = 0.18; }
+        if (!every) continue;
+        const slot = Math.floor((t + k) / every), last = s._slot;
+        if (last !== slot) { s._slot = slot; noise.push({ x: p.x + (hash(slot + k) - 0.5) * 6, y: p.y + (hash(slot * 1.3 + k) - 0.5) * 6, t0: t, str }); }
+      }
+      while (noise.length > 220) noise.shift();
+    }
+    function drawNoise(t, vision) {
+      const s = scale();
+      for (let i = noise.length - 1; i >= 0; i--) {
+        const n = noise[i], age = t - n.t0, life = 0.9 + 1.3 * n.str;
+        if (age > life) { noise.splice(i, 1); continue; }
+        const k = age / life;
+        const r = (6 + 46 * n.str) * s * ease(k) + 4 * s;
+        const a = (1 - k) * (0.25 + 0.6 * n.str) * (vision ? 1.4 : 1);
+        ctx.strokeStyle = vision ? `rgba(255,214,120,${clamp(a, 0, 1)})` : `rgba(255,255,255,${a})`;
+        ctx.lineWidth = (1 + 2.2 * n.str * (1 - k)) * s;
+        ctx.beginPath(); ctx.ellipse(n.x, n.y, r, r * 0.6, 0, 0, 6.283); ctx.stroke();
+      }
+    }
+
+    // ---------- swimmers ----------
+    function look(s) {
+      return { skin: SKIN[Math.floor(hash(s.id + 1) * SKIN.length)], hair: HAIR[Math.floor(hash(s.id + 2) * HAIR.length)], cap: CAP[Math.floor(hash(s.id + 3) * CAP.length)], capOn: hash(s.id + 4) > 0.55 };
+    }
+
+    function head(x, y, r, L, face, tilt) {
+      ctx.fillStyle = L.skin; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+      ctx.fillStyle = L.capOn ? L.cap : L.hair;
+      ctx.beginPath(); ctx.arc(x, y - r * 0.15 + (tilt || 0) * r * 0.4, r * 1.02, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+      // face
+      ctx.fillStyle = '#222';
+      const ey = y + r * 0.05 - (tilt || 0) * r * 0.35;
+      if (face === 'shut') {
+        ctx.strokeStyle = '#222'; ctx.lineWidth = Math.max(1, r * 0.14);
+        ctx.beginPath(); ctx.moveTo(x - r * 0.45, ey); ctx.lineTo(x - r * 0.2, ey); ctx.moveTo(x + r * 0.2, ey); ctx.lineTo(x + r * 0.45, ey); ctx.stroke();
+      } else if (face === 'up') {
+        ctx.beginPath(); ctx.arc(x - r * 0.32, ey - r * 0.1, r * 0.12, 0, 6.283); ctx.arc(x + r * 0.32, ey - r * 0.1, r * 0.12, 0, 6.283); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(x - r * 0.32, ey, r * 0.12, 0, 6.283); ctx.arc(x + r * 0.32, ey, r * 0.12, 0, 6.283); ctx.fill();
+      }
+      ctx.strokeStyle = '#222'; ctx.lineWidth = Math.max(1, r * 0.12);
+      if (face === 'scream') { ctx.fillStyle = '#5a1a1a'; ctx.beginPath(); ctx.ellipse(x, y + r * 0.48, r * 0.22, r * 0.26, 0, 0, 6.283); ctx.fill(); }
+      else if (face === 'happy') { ctx.beginPath(); ctx.arc(x, y + r * 0.3, r * 0.3, 0.2, Math.PI - 0.2); ctx.stroke(); }
+      else if (face === 'up') { ctx.beginPath(); ctx.ellipse(x, y + r * 0.42, r * 0.14, r * 0.09, 0, 0, 6.283); ctx.stroke(); }
+    }
+
+    function swimmer(s, t, state) {
+      const L = look(s), sc = scale();
+      const r = 9.5 * sc;
+      let p = px(s);
+      if (s.state === 'towed') {
+        const ring = state.rings.find(q => q.who === s.id);
+        if (ring) {
+          const tw = towerPx(), k = ease((state.t - ring.t0) / (ring.t1 - ring.t0));
+          const a = px({ x: s.tx, y: s.ty });
+          p = { x: lerp(a.x, tw.x, k), y: lerp(a.y, Math.min(tw.y, waterH + 6), k) };
+          ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2 * sc;
+          ctx.beginPath(); ctx.moveTo(tw.x, tw.y - 10 * sc); ctx.quadraticCurveTo((tw.x + p.x) / 2, (tw.y + p.y) / 2 + 12 * sc, p.x, p.y); ctx.stroke();
+          ringShape(p.x, p.y + r * 0.6, r * 1.15);
+          head(p.x, p.y, r, L, 'happy');
+        }
         return;
       }
-      // breaths of glass left
-      for (let k = 0; k < total; k++) {
-        ctx.fillStyle = k < left ? rgba(PAL.gold, 0.85) : 'rgba(255,255,255,0.12)';
-        ctx.beginPath(); ctx.arc(hx - w * 0.7 + (w * 1.4) * k / (total - 1), base + r * 0.2, r * 0.05 + 1, 0, 6.283); ctx.fill();
+      if (s.state === 'away' || s.state === 'saved' || s.state === 'gone') return;
+      const bob = Math.sin(t * 2.2 + s.id) * 1.2 * sc;
+      const fade = s.enter > 0 ? clamp((state.t - s.enter) / 0.8, 0, 1) : 1;
+      ctx.globalAlpha = fade;
+      if (s.state === 'lost') {
+        const age = state.t - s.since;
+        if (age > 2.5) return;
+        for (let k = 0; k < 5; k++) {
+          const yy = p.y - ((age * 18 + k * 7) % 22) * sc;
+          ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - age / 2.5)})`; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(p.x + Math.sin(k * 2 + age * 3) * 4 * sc, yy, (1.5 + k % 3) * sc, 0, 6.283); ctx.stroke();
+        }
+        return;
       }
-      ctx.restore();
+      // shadow of the body under water
+      ctx.fillStyle = 'rgba(10,50,70,0.25)';
+      if (s.kind === 'floater') {
+        // on an inflatable ring
+        ctx.strokeStyle = L.cap; ctx.lineWidth = 5 * sc; ctx.beginPath(); ctx.arc(p.x, p.y + bob, r * 1.7, 0, 6.283); ctx.stroke();
+        ctx.fillStyle = L.skin; ctx.beginPath(); ctx.ellipse(p.x + r * 1.1, p.y + bob, r * 1.3, r * 0.5, 0.2, 0, 6.283); ctx.fill();
+        head(p.x - r * 0.6, p.y + bob, r, L, 'shut');
+        ctx.fillStyle = '#111'; ctx.fillRect(p.x - r * 1.05, p.y + bob - r * 0.1, r * 0.9, r * 0.28);
+      } else if (s.state === 'swim' && s.kind === 'swimmer') {
+        const dir = Math.cos(t * 0.37 + s.id * 7.13) > 0 ? 1 : -1;
+        ctx.beginPath(); ctx.ellipse(p.x - dir * r * 1.4, p.y + 2 * sc, r * 1.9, r * 0.6, 0, 0, 6.283); ctx.fill();
+        const st = Math.sin(t * 4 + s.id);
+        ctx.strokeStyle = L.skin; ctx.lineWidth = 2.6 * sc; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + dir * r * (1 + 0.6 * st), p.y - r * 0.9); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + dir * r * (1 - 0.6 * st), p.y + r * 0.9); ctx.stroke();
+        head(p.x, p.y + bob * 0.3, r, L, 'happy');
+      } else if (s.state === 'swim') {
+        // treading water: upright and calm
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1 * sc;
+        ctx.beginPath(); ctx.ellipse(p.x, p.y + r * 0.7, r * 1.5, r * 0.5, 0, 0, 6.283); ctx.stroke();
+        head(p.x, p.y + bob, r, L, 'calm');
+      } else if (s.state === 'struggle') {
+        const w = Math.sin(t * 11 + s.id * 3);
+        ctx.strokeStyle = L.skin; ctx.lineWidth = 2.8 * sc; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(p.x - r * 0.6, p.y); ctx.lineTo(p.x - r * (1.4 + 0.4 * w), p.y - r * (1.9 + 0.5 * w)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x + r * 0.6, p.y); ctx.lineTo(p.x + r * (1.4 - 0.4 * w), p.y - r * (1.9 - 0.5 * w)); ctx.stroke();
+        // splashes
+        for (let k = 0; k < 6; k++) {
+          const a = t * 6 + k * 1.1 + s.id, d = r * (1.3 + 0.8 * Math.abs(Math.sin(a * 1.7)));
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.beginPath(); ctx.arc(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d * 0.6, 1.6 * sc, 0, 6.283); ctx.fill();
+        }
+        head(p.x, p.y + Math.sin(t * 9 + s.id) * 2 * sc, r, L, 'scream');
+        bubble(p.x, p.y - r * 3.1, 'HELP!', '#e63946', sc);
+      } else if (s.state === 'drown') {
+        // The instinctive drowning response: upright, head back, mouth at the waterline, arms pressing down, no
+        // sound. For most of it they look like someone calmly treading water. Only near the end do they go under.
+        const k = s.sink, late = clamp((k - 0.74) / 0.26, 0, 1);
+        const dip = Math.sin(t * 1.6 + s.id) * 0.5 + 0.5;          // bobbing: mouth under, mouth up
+        head(p.x, p.y + late * r * 0.5 + dip * r * 0.12, r * (1 - 0.18 * late), L, late > 0.2 ? 'up' : 'calm', 0.35 + 0.65 * late);
+        if (late > 0) {
+          ctx.fillStyle = `rgba(40,140,175,${0.25 + 0.65 * late})`;
+          ctx.beginPath(); ctx.rect(p.x - r * 1.3, p.y + r * (0.6 - 1.5 * late), r * 2.6, r * 2); ctx.fill();
+          for (let q = 0; q < 3; q++) {
+            const a = (t * 1.3 + q * 0.33) % 1;
+            ctx.strokeStyle = `rgba(255,255,255,${0.6 * (1 - a) * late})`; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(p.x + (q - 1) * r * 0.5, p.y - a * r * 1.4, (1.2 + q * 0.4) * sc, 0, 6.283); ctx.stroke();
+          }
+        }
+        // no ripple ring: they aren't kicking
+      }
+      // flagged by the whistle: nobody answered from here
+      if (s.flagged !== false && s.flagged != null && s.state === 'drown') {
+        const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+        ctx.strokeStyle = `rgba(255,70,80,${0.55 + 0.45 * pulse})`; ctx.lineWidth = 2 * sc; ctx.setLineDash([4 * sc, 3 * sc]);
+        reachPath(p.x, p.y, SW.RULES.reachDrown); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = '#ff4650'; ctx.font = `bold ${Math.round(13 * sc)}px -apple-system, sans-serif`; ctx.textAlign = 'center';
+        ctx.fillText('!', p.x + SW.RULES.reachDrown * W + 4 * sc, p.y - SW.RULES.reachDrown * waterH); ctx.textAlign = 'start';
+      }
+      // whistle reply
+      if (s.reply && state.t - s.reply.t < 1.6) {
+        const a = 1 - (state.t - s.reply.t) / 1.6;
+        ctx.globalAlpha = Math.min(1, a * 2);
+        if (s.reply.kind === 'wave') bubble(p.x, p.y - r * 2.8, 'OK!', '#2a7d4f', sc);
+        ctx.globalAlpha = 1;
+      }
+      ctx.globalAlpha = 1;
     }
 
-    function reflection(hx, r, f) {
-      if (f.deadT != null) return;
-      const o = f.shown;
-      ctx.fillStyle = rgba(mix(PAL.pale, PAL.accent, o), 0.10 + 0.12 * o);
-      ctx.beginPath(); ctx.ellipse(hx, L.stemBase + r * 0.55, r * (0.3 + 0.5 * o), r * 0.12, 0, 0, 6.283); ctx.fill();
+    function fitText(text, x, y, maxW) {
+      let size = parseFloat(ctx.font.match(/(\d+(?:\.\d+)?)px/)[1]);
+      while (ctx.measureText(text).width > maxW && size > 8) { size -= 0.5; ctx.font = ctx.font.replace(/\d+(?:\.\d+)?px/, size + 'px'); }
+      ctx.fillText(text, x, y);
+    }
+    function bubble(x, y, text, col, sc, dark) {
+      ctx.font = `bold ${Math.round(11 * sc)}px -apple-system, Segoe UI, sans-serif`;
+      const w = ctx.measureText(text).width + 10 * sc, h = 17 * sc;
+      x = clamp(x, w / 2 + 2, W - w / 2 - 2);
+      ctx.fillStyle = dark ? 'rgba(4,30,44,0.88)' : 'rgba(255,255,255,0.95)';
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - w / 2, y - h / 2, w, h, 6 * sc) : ctx.rect(x - w / 2, y - h / 2, w, h); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x - 4 * sc, y + h / 2); ctx.lineTo(x, y + h / 2 + 5 * sc); ctx.lineTo(x + 4 * sc, y + h / 2); ctx.fill();
+      ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(text, x, y + 0.5); ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
     }
 
-    // ---------- the Owl ----------
-    function owlShape(x, y, s, o, t) {
-      // o: {eyes:'open'|'closed'|'glow', flap, look:{x,y}, selected}
-      ctx.save(); ctx.translate(x, y);
-      if (o.selected) {
-        const g = ctx.createRadialGradient(0, 0, s * 0.5, 0, 0, s * 2.6);
-        g.addColorStop(0, 'rgba(255,207,107,0.35)'); g.addColorStop(1, 'rgba(255,207,107,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, s * 2.6, 0, 6.283); ctx.fill();
-      }
-      const body = [176, 158, 132], dark = [96, 82, 70];
-      if (o.flap != null) {
-        const fl = Math.sin(o.flap) * 0.9;
-        ctx.fillStyle = rgba(dark, 0.95);
-        for (const side of [-1, 1]) {
-          ctx.beginPath(); ctx.moveTo(side * s * 0.4, -s * 0.1);
-          ctx.quadraticCurveTo(side * s * 1.8, -s * (0.6 + fl), side * s * 2.0, s * (0.3 - fl * 0.6));
-          ctx.quadraticCurveTo(side * s * 1.1, s * 0.25, side * s * 0.4, s * 0.35); ctx.fill();
+    // ---------- rings in the air ----------
+    function rings(state) {
+      const tw = towerPx(), sc = scale();
+      for (const r of state.rings) {
+        if (r.mode === 'flying') {
+          const k = clamp((state.t - r.t0) / (r.t1 - r.t0), 0, 1);
+          const tgt = px(r);
+          const x = lerp(tw.x, tgt.x, k), y = lerp(tw.y - 10 * sc, tgt.y, k);
+          const h = Math.sin(k * Math.PI) * 40 * sc;
+          ctx.fillStyle = 'rgba(0,40,60,0.25)'; ctx.beginPath(); ctx.ellipse(x, y, 8 * sc, 4 * sc, 0, 0, 6.283); ctx.fill();
+          ringShape(x, y - h, (7 + 3 * Math.sin(k * Math.PI)) * sc);
+          // target marker
+          ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+          reachPath(tgt.x, tgt.y, SW.RULES.reachStruggle); ctx.stroke(); ctx.setLineDash([]);
+        } else if (r.mode === 'retrieving') {
+          const k = clamp((state.t - r.t0) / (r.t1 - r.t0), 0, 1);
+          const a = px(r), x = lerp(a.x, tw.x, ease(k)), y = lerp(a.y, Math.min(tw.y, waterH + 4), ease(k));
+          ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(tw.x, tw.y - 10 * sc); ctx.lineTo(x, y); ctx.stroke();
+          ringShape(x, y, 7 * sc);
         }
       }
-      ctx.fillStyle = rgba(body, 1);
-      ctx.beginPath(); ctx.ellipse(0, s * 0.25, s * 0.78, s * 0.95, 0, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(0, -s * 0.55, s * 0.72, s * 0.6, 0, 0, 6.283); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-s * 0.62, -s * 0.85); ctx.lineTo(-s * 0.48, -s * 1.3); ctx.lineTo(-s * 0.25, -s * 0.98); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(s * 0.62, -s * 0.85); ctx.lineTo(s * 0.48, -s * 1.3); ctx.lineTo(s * 0.25, -s * 0.98); ctx.fill();
-      ctx.fillStyle = rgba([210, 196, 170], 1);
-      ctx.beginPath(); ctx.ellipse(0, s * 0.42, s * 0.5, s * 0.62, 0, 0, 6.283); ctx.fill();
-      ctx.strokeStyle = rgba(dark, 0.6); ctx.lineWidth = 1;
-      for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(0, s * (0.1 + k * 0.28), s * 0.28, 0.4, 2.7); ctx.stroke(); }
-      for (const side of [-1, 1]) {
-        const ex = side * s * 0.3, ey = -s * 0.58;
-        ctx.fillStyle = rgba([238, 228, 206], 1); ctx.beginPath(); ctx.arc(ex, ey, s * 0.27, 0, 6.283); ctx.fill();
-        if (o.eyes === 'closed') {
-          ctx.strokeStyle = rgba(dark, 1); ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(ex, ey - s * 0.02, s * 0.15, 0.3, 2.8); ctx.stroke();
-        } else {
-          const lx = o.look ? clamp(o.look.x, -1, 1) * s * 0.08 : 0, ly = o.look ? clamp(o.look.y, -1, 1) * s * 0.08 : 0;
-          ctx.fillStyle = o.eyes === 'glow' ? '#ffcf6b' : '#e8a943';
-          ctx.beginPath(); ctx.arc(ex + lx, ey + ly, s * 0.17, 0, 6.283); ctx.fill();
-          ctx.fillStyle = '#1a1410'; ctx.beginPath(); ctx.arc(ex + lx, ey + ly, s * 0.08, 0, 6.283); ctx.fill();
-        }
-      }
-      ctx.fillStyle = rgba([120, 92, 60], 1);
-      ctx.beginPath(); ctx.moveTo(-s * 0.08, -s * 0.42); ctx.lineTo(s * 0.08, -s * 0.42); ctx.lineTo(0, -s * 0.26); ctx.fill();
-      ctx.restore();
     }
 
-    function owl(v, n, t, breathT) {
-      const ow = v.owl, s = clamp(W * 0.038, 12, 24);
-      const p = L.perch;
-      const hover = i => ({ x: flowerX(i, n), y: L.headY - radius(n) * 2.3 });
-      let x = p.x, y = p.y, flap = null, eyes = 'open', look = null;
-      if (ow.mode === 'flying') {
-        const h = hover(ow.target), k = ease(breathT);
-        const cx = (p.x + h.x) / 2, cy = Math.min(p.y, h.y) - H * 0.08;
-        x = (1 - k) * (1 - k) * p.x + 2 * (1 - k) * k * cx + k * k * h.x;
-        y = (1 - k) * (1 - k) * p.y + 2 * (1 - k) * k * cy + k * k * h.y;
-        flap = t * 14; eyes = 'glow';
-      } else if (ow.mode === 'resting' && ow.returnT != null && t - ow.returnT < 0.7) {
-        const h = hover(ow.target), k = ease((t - ow.returnT) / 0.7);
-        x = h.x + (p.x - h.x) * k; y = h.y + (p.y - h.y) * k - Math.sin(k * Math.PI) * H * 0.05;
-        flap = t * 14; eyes = 'open';
-      } else if (ow.mode === 'resting') {
-        eyes = 'closed';
+    // ---------- the Captain ----------
+    function captain(state, level, t) {
+      if (!level || !(level.captain || level.canCall)) return;
+      const C = state.captain, sc = scale(), tw = towerPx();
+      const stop = { x: tw.x + 52 * sc, y: tw.y + 8 * sc }, edge = { x: W + 40, y: tw.y + 8 * sc };
+      let pos = null;
+      if (C.mode === 'driving') pos = { x: lerp(edge.x, stop.x, ease((state.t - C.t0) / SW.RULES.captainDrive)), y: stop.y };
+      else if (C.mode === 'looking') pos = stop;
+      else if (C.mode === 'leaving') pos = { x: lerp(stop.x, edge.x, ease((state.t - C.t0) / 1.2)), y: stop.y };
+      else if (C.warnFor != null) {
+        const left = C.warnFor - state.t;
+        pos = { x: lerp(edge.x, stop.x, ease(1 - left / SW.RULES.captainWarn)), y: stop.y };
       }
-      // where it is looking next
-      if (ow.gaze != null && ow.mode === 'idle') {
-        const h = hover(ow.gaze);
-        look = { x: (h.x - x) / W * 4, y: (h.y - y) / H * 4 };
-        ctx.setLineDash([3, 5]); ctx.strokeStyle = 'rgba(255,207,107,0.55)'; ctx.lineWidth = 1.4;
-        ctx.beginPath(); ctx.moveTo(x - s * 0.3, y - s * 0.5); ctx.quadraticCurveTo((x + h.x) / 2, Math.min(y, h.y) - H * 0.06, h.x, h.y + radius(n) * 0.6); ctx.stroke();
-        ctx.setLineDash([]);
-        eyes = 'glow';
+      if (!pos) return;
+      // jeep
+      ctx.save(); ctx.translate(pos.x, pos.y);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(2, 9 * sc, 22 * sc, 6 * sc, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#ffd23f'; ctx.fillRect(-20 * sc, -9 * sc, 40 * sc, 16 * sc);
+      ctx.fillStyle = '#2a2a2a'; ctx.fillRect(-16 * sc, 6 * sc, 9 * sc, 4 * sc); ctx.fillRect(7 * sc, 6 * sc, 9 * sc, 4 * sc);
+      ctx.fillStyle = '#7fd4ff'; ctx.fillRect(-14 * sc, -7 * sc, 10 * sc, 7 * sc);
+      // the Captain: hat and clipboard
+      ctx.fillStyle = '#f1c7a3'; ctx.beginPath(); ctx.arc(4 * sc, -12 * sc, 5 * sc, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#1d3557'; ctx.fillRect(-1 * sc, -19 * sc, 10 * sc, 4 * sc); ctx.fillRect(-3 * sc, -16 * sc, 14 * sc, 2 * sc);
+      ctx.fillStyle = '#fff'; ctx.fillRect(9 * sc, -11 * sc, 6 * sc, 8 * sc);
+      ctx.restore();
+      if (C.mode === 'looking') {
+        // his gaze sweeps the water; he only notices noise
+        const k = (state.t - C.t0) / SW.RULES.captainLook;
+        const ang = -Math.PI / 2 + Math.sin(k * Math.PI * 2) * 0.9;
+        const g = ctx.createRadialGradient(pos.x, pos.y - 10, 10, pos.x, pos.y - 10, H);
+        g.addColorStop(0, 'rgba(255,220,120,0.28)'); g.addColorStop(1, 'rgba(255,220,120,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(pos.x, pos.y - 10); ctx.arc(pos.x, pos.y - 10, H * 1.2, ang - 0.35, ang + 0.35); ctx.closePath(); ctx.fill();
+        bubble(pos.x - 10 * sc, pos.y - 34 * sc, 'Inspection!', '#1d3557', sc);
+      } else if (C.mode === 'leaving' && C.verdict && state.t - C.verdict.t < 1.6) {
+        bubble(pos.x - 10 * sc, pos.y - 34 * sc, C.verdict.ok ? '★ Safe beach!' : '✗ Unsafe!', C.verdict.ok ? '#2a7d4f' : '#e63946', sc);
+      } else if (C.mode === 'driving') {
+        bubble(pos.x - 10 * sc, pos.y - 34 * sc, 'On my way!', '#1d3557', sc);
+      } else if (C.warnFor != null) {
+        const left = Math.ceil(C.warnFor - state.t);
+        bubble(pos.x - 10 * sc, pos.y - 34 * sc, `Inspection in ${left}`, '#1d3557', sc);
       }
-      if (ow.inspectT != null && t - ow.inspectT < 0.5) eyes = 'glow';
-      if (ow.mode === 'resting' && (ow.returnT == null || t - ow.returnT >= 0.7)) {
-        ctx.fillStyle = 'rgba(201,209,239,0.6)'; ctx.font = `${Math.round(s * 0.8)}px Georgia`;
-        const zz = (t * 0.8) % 1;
-        ctx.fillText('z', x + s * 0.9, y - s * (1 + zz)); ctx.fillText('z', x + s * 1.3, y - s * (1.5 + zz));
-      }
-      owlShape(x, y, s, { eyes, flap, look, selected: ow.selected }, t);
-      if (ow.drag) owlShape(ow.drag.x, ow.drag.y, s * 0.9, { eyes: 'glow', flap: t * 10, selected: true }, t);
-      return { x, y, s };
     }
 
     // ---------- effects ----------
     function effects(v, t) {
+      const vision = v.state && v.state.captain.mode === 'looking';
       for (const e of v.effects) {
         const k = (t - e.t0) / e.dur;
         if (k < 0 || k > 1) continue;
-        if (e.type === 'drop') {
-          const y = e.y0 + (e.y1 - e.y0) * ease(k);
-          ctx.fillStyle = rgba(PAL.water, 0.95 * (1 - k * 0.3));
-          ctx.beginPath(); ctx.ellipse(e.x, y, 3, 5, 0, 0, 6.283); ctx.fill();
-        } else if (e.type === 'ring') {
-          ctx.strokeStyle = rgba(e.col, (1 - k) * (e.a || 0.8)); ctx.lineWidth = e.w || 2;
-          ctx.beginPath(); ctx.arc(e.x, e.y, e.r0 + (e.r1 - e.r0) * ease(k), 0, 6.283); ctx.stroke();
-        } else if (e.type === 'spark') {
-          const x = e.x + e.vx * k, y = e.y + e.vy * k + 30 * k * k;
-          ctx.fillStyle = rgba(e.col, 1 - k); ctx.beginPath(); ctx.arc(x, y, e.r * (1 - k * 0.5), 0, 6.283); ctx.fill();
-        } else if (e.type === 'petal') {
-          const x = e.x + e.vx * k + Math.sin(k * 8 + e.p) * 6, y = e.y + e.vy * k + 60 * k * k;
-          ctx.save(); ctx.translate(x, y); ctx.rotate(k * 5 + e.p);
-          ctx.fillStyle = rgba(e.col, 1 - k); ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, 6.283); ctx.fill(); ctx.restore();
-        } else if (e.type === 'wind') {
-          ctx.strokeStyle = rgba(PAL.ink, 0.35 * Math.sin(k * Math.PI)); ctx.lineWidth = 1.2;
-          for (let j = 0; j < 4; j++) {
-            const yy = e.y - 12 + j * 9, xx = e.x - 60 + k * 90 + j * 6;
-            ctx.beginPath(); ctx.moveTo(xx - 26, yy); ctx.quadraticCurveTo(xx - 10, yy - 5, xx + 6, yy); ctx.stroke();
+        if (e.type === 'splash') {
+          for (let j = 0; j < 9; j++) {
+            const a = j / 9 * 6.283, d = 18 * scale() * ease(k);
+            ctx.fillStyle = `rgba(255,255,255,${1 - k})`;
+            ctx.beginPath(); ctx.arc(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d * 0.6 - Math.sin(k * Math.PI) * 8, 2 * scale(), 0, 6.283); ctx.fill();
           }
         } else if (e.type === 'text') {
           ctx.globalAlpha = Math.sin(k * Math.PI);
-          ctx.fillStyle = rgba(e.col, 1); ctx.font = `${e.size || 14}px Georgia`; ctx.textAlign = 'center';
-          ctx.fillText(e.text, e.x, e.y - 16 * k); ctx.textAlign = 'start'; ctx.globalAlpha = 1;
-        } else if (e.type === 'crack') {
-          ctx.strokeStyle = rgba([255, 255, 255], 0.8 * (1 - k)); ctx.lineWidth = 1.2;
-          for (let j = 0; j < 6; j++) {
-            const a = j * 1.05 + 0.3;
-            ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(a) * e.r * (0.4 + 0.6 * k), e.y + Math.sin(a) * e.r * (0.4 + 0.6 * k)); ctx.stroke();
-          }
+          ctx.font = `bold ${Math.round((e.size || 14) * scale())}px -apple-system, Segoe UI, sans-serif`;
+          ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+          ctx.strokeText(e.text, e.x, e.y - 20 * k); ctx.fillStyle = e.col || '#fff'; ctx.fillText(e.text, e.x, e.y - 20 * k);
+          ctx.textAlign = 'start'; ctx.globalAlpha = 1;
+        } else if (e.type === 'whistle') {
+          const tw = towerPx(), r = SW.RULES.whistleSpeed * (t - e.t0) * Math.max(W, waterH);
+          ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; ctx.lineWidth = 3 * scale();
+          ctx.beginPath(); ctx.ellipse(tw.x, tw.y, r, r * (waterH / W), 0, Math.PI, 2 * Math.PI); ctx.stroke();
+        } else if (e.type === 'tag') {
+          const s = v.state && v.state.swimmers[e.who];
+          if (!s || s.state === 'saved' || s.state === 'gone' || vision) continue;
+          let p = px(s);
+          if (s.state === 'towed') continue;
+          ctx.globalAlpha = Math.min(1, (1 - k) * 3);
+          bubble(p.x, p.y - 30 * scale(), e.text, e.col, scale(), true);
+          ctx.globalAlpha = 1;
+        } else if (e.type === 'banner') {
+          const a = Math.min(1, k * 8, (1 - k) * 4), sc = scale();
+          ctx.globalAlpha = a;
+          const y = waterH * (e.low ? 0.8 : 0.2);
+          ctx.fillStyle = 'rgba(4,30,44,0.82)';
+          const bw = Math.min(W - 24, 360 * sc), bh = (e.sub ? 58 : 38) * sc;
+          ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W / 2 - bw / 2, y - bh / 2, bw, bh, 12 * sc) : ctx.rect(W / 2 - bw / 2, y - bh / 2, bw, bh); ctx.fill();
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = e.col || '#fff'; ctx.font = `900 ${Math.round(20 * sc)}px -apple-system, Segoe UI, sans-serif`;
+          ctx.fillText(e.text, W / 2, y - (e.sub ? 10 * sc : 0));
+          if (e.sub) { ctx.fillStyle = '#eef8fb'; ctx.font = `${Math.round(12.5 * sc)}px -apple-system, Segoe UI, sans-serif`; fitText(e.sub, W / 2, y + 14 * sc, bw - 16); }
+          ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
+        } else if (e.type === 'stamp') {
+          const sc = scale(), z = k < 0.12 ? 2.2 - 1.2 * (k / 0.12) : 1;
+          ctx.save(); ctx.globalAlpha = Math.min(1, (1 - k) * 3); ctx.translate(W / 2, waterH * 0.5); ctx.rotate(-0.18); ctx.scale(z, z);
+          ctx.strokeStyle = '#2fbf71'; ctx.fillStyle = '#2fbf71'; ctx.lineWidth = 4 * sc;
+          const bw = 170 * sc, bh = 54 * sc;
+          ctx.strokeRect(-bw / 2, -bh / 2, bw, bh);
+          ctx.font = `900 ${Math.round(26 * sc)}px -apple-system, Segoe UI, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('SAFE ✓', 0, -4 * sc);
+          ctx.font = `700 ${Math.round(9 * sc)}px -apple-system, Segoe UI, sans-serif`; ctx.fillText('CERTIFIED BY THE CAPTAIN', 0, 16 * sc);
+          ctx.restore();
+        } else if (e.type === 'confetti') {
+          const x = e.x + e.vx * k, y = e.y + e.vy * k + 80 * k * k;
+          ctx.fillStyle = e.col; ctx.globalAlpha = 1 - k; ctx.fillRect(x, y, 3 * scale(), 3 * scale()); ctx.globalAlpha = 1;
         }
-      }
-    }
-
-    function labels(v, t, n) {
-      for (const lb of v.labels || []) {
-        const k = clamp((t - lb.t0) / 0.6, 0, 1) * (lb.gone ? clamp(1 - (t - lb.gone) / 0.4, 0, 1) : 1);
-        if (k <= 0) continue;
-        const x0 = flowerX(lb.f, n), r = radius(n);
-        const y = L.headY - r * 0.6 - (L.headY - L.threadTop) * lb.at;
-        ctx.font = `italic ${Math.round(clamp(W * 0.034, 11, 15))}px Georgia`;
-        const tw = ctx.measureText(lb.text).width;
-        let right = x0 < W * 0.55;
-        if (right && x0 + r * 0.9 + tw + 8 > W) right = false;
-        if (!right && x0 - r * 0.9 - tw - 8 < 0) right = true;
-        const tx = right ? x0 + r * 0.9 : x0 - r * 0.9;
-        ctx.globalAlpha = k;
-        ctx.strokeStyle = 'rgba(232,236,255,0.6)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x0 + (right ? 6 : -6), y); ctx.lineTo(tx, y); ctx.stroke();
-        ctx.fillStyle = 'rgba(232,236,255,0.92)'; ctx.font = `italic ${Math.round(clamp(W * 0.034, 11, 15))}px Georgia`;
-        ctx.textAlign = right ? 'left' : 'right'; ctx.textBaseline = 'middle';
-        ctx.fillText(lb.text, tx + (right ? 4 : -4), y);
-        ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
       }
     }
 
     function draw(v, t) {
-      const n = v.flowers.length;
-      const bt = v.breathT;
-      sky(t, v.dawn || 0, v.level && v.level.length < 9999 ? (v.state.breath + (v.running ? v.breathT : 0)) / v.level.length : null);
-      branch();
-      for (let i = 0; i < n; i++) thread(v, i, n, t, bt);
-      pond(t, v.dawn || 0);
-      const heads = [];
-      for (let i = 0; i < n; i++) {
-        const f = v.flowers[i], x = flowerX(i, n), r = radius(n);
-        // telegraphed gust
-        if (f.gustSoon) {
-          f.jolt = Math.sin(t * 22) * 0.06;
-          ctx.strokeStyle = `rgba(201,209,239,${0.18 + 0.12 * Math.sin(t * 9)})`; ctx.lineWidth = 1;
-          for (let j = 0; j < 3; j++) {
-            const yy = L.headY - r * (0.2 + j * 0.45), ph = ((t * 0.9 + j * 0.3) % 1);
-            const xx = x - r * 3.2 + ph * r * 2.2;
-            ctx.beginPath(); ctx.moveTo(xx - r * 0.9, yy); ctx.quadraticCurveTo(xx - r * 0.4, yy - r * 0.18, xx, yy); ctx.stroke();
-          }
-        } else if (!f.joltT || t - f.joltT > 0.6) f.jolt = 0;
-        const h = stem(x, r, f, t);
-        reflection(h.hx, r, f);
-        head(h.hx, h.hy, r, f, t);
-        if ((f.cloche > 0 && f.deadT == null) || f.underGlass) cloche(h.hx, h.hy, r, f, t);
-        if (v.owl.selected && !f.cloche && f.deadT == null) {
-          ctx.strokeStyle = 'rgba(255,207,107,0.45)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.2;
-          ctx.beginPath(); ctx.arc(h.hx, h.hy, r * 1.15, 0, 6.283); ctx.stroke(); ctx.setLineDash([]);
-        }
-        if (v.owl.gaze === i && v.owl.mode === 'idle') {
-          ctx.strokeStyle = `rgba(255,207,107,${0.35 + 0.25 * Math.sin(t * 6)})`; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(h.hx, h.hy, r * 1.25, 0, 6.283); ctx.stroke();
-        }
-        if (f.pulse) {
-          ctx.strokeStyle = `rgba(143,216,255,${0.35 + 0.3 * Math.sin(t * 5)})`; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(h.hx, h.hy, r * (1.1 + 0.1 * Math.sin(t * 5)), 0, 6.283); ctx.stroke();
-        }
-        heads.push(h);
+      const st = v.state, vision = st && st.captain.mode === 'looking';
+      sea(t, vision);
+      if (st) emitNoise(st, t);
+      drawNoise(t, vision);
+      if (st && !vision) {
+        // drowning swimmers first so the loud ones draw on top
+        const order = st.swimmers.slice().sort((a, b) => (a.state === 'drown') - (b.state === 'drown'));
+        for (const s of order.reverse()) swimmer(s, t, st);
       }
-      L.heads = heads;
-      if (v.level && v.level.owl) L.owlPos = owl(v, n, t, bt); else L.owlPos = null;
+      if (st && vision) {
+        // Captain vision: he sees only noise. Swimmers who are making none are not there for him.
+        ctx.fillStyle = 'rgba(255,214,120,0.85)'; ctx.font = `bold ${Math.round(12 * scale())}px -apple-system, sans-serif`;
+        ctx.textAlign = 'center'; ctx.fillText('WHAT THE CAPTAIN SEES', W / 2, 18 * scale());
+        ctx.fillStyle = 'rgba(255,214,120,0.6)'; ctx.font = `${Math.round(11 * scale())}px -apple-system, sans-serif`;
+        ctx.fillText('he only notices noise', W / 2, 33 * scale()); ctx.textAlign = 'start';
+        for (const s of st.swimmers) if (s.state === 'struggle') { const p = px(s); ctx.fillStyle = 'rgba(255,90,90,0.9)'; ctx.beginPath(); ctx.arc(p.x, p.y, 5 * scale(), 0, 6.283); ctx.fill(); }
+      }
+      sand(t);
+      tower(t, st, vision);
+      if (st) { rings(st); captain(st, v.level, t); }
       effects(v, t);
-      labels(v, t, n);
-      paper();
+      if (v.aim && !vision) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5;
+        reachPath(v.aim.x, v.aim.y, SW.RULES.reachStruggle); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(v.aim.x - 5, v.aim.y); ctx.lineTo(v.aim.x + 5, v.aim.y); ctx.moveTo(v.aim.x, v.aim.y - 5); ctx.lineTo(v.aim.x, v.aim.y + 5); ctx.stroke();
+      }
     }
 
-    function hitFlower(x, y, n) {
-      if (!L.heads) return -1;
-      const r = radius(n);
-      let best = -1, bd = 1e9;
-      L.heads.forEach((h, i) => {
-        const dx = x - h.hx, dy = y - h.hy;
-        if (Math.abs(dx) < Math.max(r * 1.1, W / n / 2) && dy > -r * 2.2 && dy < (L.stemBase - h.hy) + r * 0.5) {
-          const d = dx * dx + dy * dy * 0.2;
-          if (d < bd) { bd = d; best = i; }
-        }
-      });
-      return best;
-    }
-    function hitOwl(x, y) {
-      if (!L.owlPos) return false;
-      const o = L.owlPos;
-      return Math.hypot(x - o.x, y - o.y) < Math.max(o.s * 2.4, 28);
-    }
-    function headPos(i) { return L.heads && L.heads[i] ? { x: L.heads[i].hx, y: L.heads[i].hy } : { x: 0, y: 0 }; }
-
-    return { resize, draw, hitFlower, hitOwl, headPos, flowerX, radius, get W() { return W; }, get H() { return H; }, L };
+    function toWater(x, y) { return { x: x / W, y: y / waterH, inWater: y < waterH }; }
+    function toPx(p) { return px(p); }
+    function reset() { noise.length = 0; }
+    return { reset, resize, draw, toWater, toPx, towerPx, get W() { return W; }, get H() { return H; }, get waterH() { return waterH; } };
   }
 
-  root.HushRender = { createRenderer };
+  root.SWRender = { createRenderer };
 })(typeof window !== 'undefined' ? window : globalThis);

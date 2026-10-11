@@ -1,0 +1,1500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Still Water</title>
+<style>
+  :root {
+    --frame: #083b52;
+    --frame-2: #0b4d6b;
+    --ink: #eef8fb;
+    --ink-dim: #9cc3d2;
+    --coral: #ff6b4a;
+    --gold: #ffd166;
+    --ok: #3ddc97;
+    --bad: #ff5a5f;
+  }
+  html, body { margin: 0; padding: 0; background: var(--frame); color: var(--ink); }
+  body { font: 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  #sw { position: relative; width: 100%; max-width: 700px; margin: 0 auto; background: var(--frame); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  #bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px 7px; min-height: 22px; }
+  #title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: var(--ink-dim); }
+  #title b { color: var(--ink); letter-spacing: 0.14em; font-weight: 800; margin-right: 6px; }
+  #hud { display: flex; align-items: center; gap: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #strikes { color: var(--bad); letter-spacing: 2px; }
+  #strikes .off { color: rgba(255,255,255,0.25); }
+  #lives { color: var(--coral); letter-spacing: 1px; }
+  #clock { height: 4px; background: rgba(255,255,255,0.12); }
+  #clock i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), var(--coral)); }
+  #stage { position: relative; overflow: hidden; }
+  canvas { display: block; width: 100%; touch-action: pan-y; cursor: crosshair; }
+  #foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px 10px; }
+  #foot .grow { flex: 1; }
+  button { font: inherit; color: var(--ink); background: rgba(255,255,255,0.08); border: 1px solid rgba(238,248,251,0.28); border-radius: 20px; min-width: 40px; height: 40px; padding: 0 12px; cursor: pointer; touch-action: manipulation; }
+  button:hover:not(:disabled) { background: rgba(255,255,255,0.16); }
+  button:disabled { opacity: 0.38; cursor: default; }
+  button.primary { background: var(--coral); border-color: var(--coral); color: #fff; font-weight: 700; }
+  button.primary:hover { background: #ff8366; }
+  button.act { position: relative; overflow: hidden; font-weight: 700; padding: 0 14px; }
+  button.act .cd { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--gold); width: 0; }
+  button.act small { font-weight: 500; opacity: 0.8; }
+  #callBtn.trusted { border-color: var(--ok); color: var(--ok); }
+  .overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px; box-sizing: border-box; background: rgba(5, 40, 58, 0.72); touch-action: pan-y; }
+  .overlay.on { display: flex; }
+  .card { background: rgba(6, 46, 66, 0.94); border: 1px solid rgba(255,255,255,0.18); border-radius: 16px; padding: 16px 18px; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+  .overlay h1 { margin: 0 0 6px; font-size: 40px; line-height: 1; letter-spacing: 0.12em; font-weight: 900; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,0.25); }
+  .overlay h2 { margin: 0 0 8px; font-size: 22px; font-weight: 800; }
+  .overlay .kicker { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-bottom: 4px; }
+  .overlay p { margin: 6px 0 14px; color: var(--ink); }
+  .overlay p b { color: var(--gold); }
+  .overlay .sub { font-size: 16px; color: var(--ink); margin-bottom: 18px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  #intro { background: linear-gradient(rgba(5,40,58,0.25), rgba(5,40,58,0.6)); }
+  #menu { justify-content: flex-start; overflow-y: auto; }
+  #menu .thread { width: 100%; max-width: 440px; text-align: left; margin: 4px 0 8px; }
+  #menu h3 { margin: 0 0 2px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
+  #menu .thread p { margin: 0 0 6px; font-size: 12px; color: var(--ink-dim); }
+  #menu .lv { height: 34px; padding: 0 11px; margin: 0 4px 4px 0; font-size: 13px; }
+  #menu .lv .s { color: var(--gold); margin-left: 5px; font-size: 11px; letter-spacing: -1px; }
+  #menu .lv.locked { opacity: 0.35; }
+  .stars { font-size: 30px; color: var(--gold); letter-spacing: 6px; margin: 2px 0 6px; }
+  .stars .off { color: rgba(255,209,102,0.22); }
+  #tapHint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(5,40,58,0.85); padding: 6px 12px; border-radius: 14px; font-size: 13px; display: none; pointer-events: none; }
+  #tapHint.on { display: block; }
+  @media (max-width: 400px) {
+    button.act { padding: 0 10px; }
+    #foot { gap: 6px; padding: 8px 8px 10px; }
+    .overlay h1 { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<div id="sw">
+  <div id="bar">
+    <div id="title"><b>STILL WATER</b><span id="lvName"></span></div>
+    <div id="hud"><span id="lives"></span><span id="strikes"></span><span id="score">0</span></div>
+  </div>
+  <div id="clock"><i></i></div>
+  <div id="stage">
+    <canvas id="c" aria-label="A beach seen from above: swimmers in the water, a lifeguard tower on the sand"></canvas>
+    <div class="overlay on" id="intro">
+      <h1>STILL WATER</h1>
+      <div class="sub">You’re the lifeguard. Real drowning is quiet.</div>
+      <div class="row"><button class="primary" id="playBtn">Play</button><button id="levelsBtn">Levels</button><button id="endlessBtn">Endless summer</button></div>
+    </div>
+    <div class="overlay" id="card"><div class="card">
+      <div class="kicker" id="cKicker"></div>
+      <h2 id="cTitle"></h2>
+      <p id="cText"></p>
+      <div class="row"><button class="primary" id="startBtn">Start shift</button></div>
+    </div></div>
+    <div class="overlay" id="menu"></div>
+    <div class="overlay" id="pause"><div class="card"><h2>Paused</h2><div class="row"><button class="primary" id="resumeBtn">Resume</button></div></div></div>
+    <div class="overlay" id="result"><div class="card">
+      <div class="kicker" id="rKicker"></div>
+      <h2 id="rTitle"></h2>
+      <div class="stars" id="rStars"></div>
+      <p id="rText"></p>
+      <div class="row" id="rButtons"></div>
+    </div></div>
+    <div id="tapHint">Tap to play</div>
+  </div>
+  <div id="foot">
+    <button class="act" id="whistleBtn" title="Whistle (space)">Whistle<span class="cd"></span></button>
+    <button class="act" id="callBtn" title="Radio the Captain (C)">Call Captain</button>
+    <span class="grow"></span>
+    <button id="restartBtn" title="Restart (R)" aria-label="Restart">↺</button>
+    <button id="menuBtn" title="Levels" aria-label="Levels">☰</button>
+    <button id="soundBtn" title="Sound" aria-label="Sound">♪</button>
+  </div>
+</div>
+<script>
+/* shell.js */
+// Widget shell utilities shared by every prototype: safe storage, height reporting,
+// touch "tap to play" gating (so swipes over the board scroll the page until activated),
+// and a DPR-aware canvas sizer.
+const Shell = (() => {
+  const mem = {};
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? (k in mem ? mem[k] : d) : JSON.parse(v); } catch (e) { return k in mem ? mem[k] : d; } },
+    set(k, v) { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  let lastH = 0;
+  function reportHeight() {
+    const b = document.body; if (!b) return;
+    const cs = getComputedStyle(b);
+    const h = Math.ceil(b.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom));
+    if (h !== lastH) { lastH = h; try { parent.postMessage({ type: 'iframe-widget-resize', height: h }, '*'); } catch (e) {} }
+  }
+  function watchHeight() {
+    try { new ResizeObserver(reportHeight).observe(document.body); } catch (e) {}
+    window.addEventListener('load', reportHeight);
+    setTimeout(reportHeight, 50); setTimeout(reportHeight, 500);
+  }
+
+  // Touch gating: until the reader taps the board, the board has touch-action:pan-y and ignores drags.
+  const coarse = (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+  function gate(el, onActivate) {
+    if (!coarse) { el.dataset.active = '1'; return () => true; }
+    el.style.touchAction = 'pan-y';
+    el.dataset.active = '';
+    const activate = () => { if (el.dataset.active) return; el.dataset.active = '1'; el.style.touchAction = 'none'; onActivate && onActivate(); };
+    el.addEventListener('click', activate);
+    const deactivate = () => { if (!el.dataset.active) return; el.dataset.active = ''; el.style.touchAction = 'pan-y'; onActivate && onActivate(false); };
+    document.addEventListener('pointerdown', (e) => { if (!el.contains(e.target)) deactivate(); }, true);
+    // inside a sandboxed iframe we can't see taps on the post around us, but the frame loses focus
+    window.addEventListener('blur', deactivate);
+    return () => !!el.dataset.active;
+  }
+
+  function fitCanvas(canvas, cssW, cssH) {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
+    canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+    const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return ctx;
+  }
+
+  return { store, reportHeight, watchHeight, gate, fitCanvas, coarse };
+})();
+
+</script>
+<script>
+/* logic.js */
+// STILL WATER: the rules, shared by the game and the solver.
+// The beach is a unit square of water: x 0..1 left to right, y 0 (far out) .. 1 (the shoreline).
+// The lifeguard tower stands on the sand just below the middle of the shoreline.
+(function (root) {
+  'use strict';
+
+  const TOWER = { x: 0.5, y: 1.1 };
+  const RULES = {
+    flight: d => 0.32 + 0.45 * d,      // seconds for a thrown ring to land
+    tow: d => 0.6 + 1.3 * d,          // seconds to haul a swimmer in
+    retrieve: d => 0.3 + 0.5 * d,     // seconds to pull back a ring that caught nobody
+    reachStruggle: 0.11,              // a struggling swimmer grabs a ring this close
+    reachDrown: 0.06,                 // a drowning swimmer can barely reach: the ring must land on them
+    whistleCooldown: 2,
+    whistleSpeed: 1.8,                // how fast the whistle carries across the water
+    captainDrive: 1.0,                // seconds for the Captain to arrive once called
+    captainLook: 1.6,                 // seconds he spends looking
+    captainWarn: 4,                   // seconds of warning before a scheduled visit
+    captainTrust: 20,                 // after a clean inspection he stays away this long
+  };
+
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+  // A level is data:
+  // { length, rings, strikes, swimmers: [{ kind, x, y, enter, leave, trouble, struggle, drown }], captain: [times], canCall }
+  //   kind: 'swimmer' (struggles loudly, then goes quiet), 'silent' (goes straight to quiet drowning),
+  //         'treader' / 'floater' (quiet and fine: they wave back when whistled at)
+  function init(level) {
+    return {
+      t: 0,
+      rings: Array.from({ length: level.rings || 1 }, () => ({ mode: 'ready', t0: 0, t1: 0, x: TOWER.x, y: TOWER.y, who: -1 })),
+      swimmers: level.swimmers.map((s, i) => ({
+        id: i, kind: s.kind, x: s.x, y: s.y, x0: s.x, y0: s.y,
+        enter: s.enter || 0, leave: s.leave == null ? Infinity : s.leave, trouble: s.trouble == null ? Infinity : s.trouble,
+        struggle: s.kind === 'silent' ? 0 : (s.struggle || 6), drown: s.drown || 5,
+        state: (s.enter || 0) > 0 ? 'away' : 'swim', since: 0, sink: 0, reply: null, wasLoud: false, flagged: false,
+      })),
+      whistle: { ready: 0, t0: -99 },
+      captain: { mode: 'away', t0: 0, trustUntil: -1, callableAt: 0, warnFor: null, verdict: null, loudAtStart: [], schedule: (level.captain || []).slice() },
+      strikes: 0, stars: 0, saved: 0, lost: 0, misses: 0, score: 0,
+      events: [],
+      over: null,
+    };
+  }
+
+  function needsHelp(s) { return s.state === 'struggle' || s.state === 'drown'; }
+  function loud(s) { return s.state === 'struggle'; }
+  function inspecting(st) { return st.captain.mode === 'looking'; }
+
+  function swimmerState(level, s, t) {
+    if (t < s.enter) return 'away';
+    if (t < s.trouble) return t >= s.leave ? 'gone' : 'swim';
+    if (t < s.trouble + s.struggle) return 'struggle';
+    if (t < s.trouble + s.struggle + s.drown) return 'drown';
+    return 'lost';
+  }
+
+  // ---------- player actions ----------
+  function canThrow(st) { return !st.over && !inspecting(st) && st.rings.some(r => r.mode === 'ready'); }
+  function throwRing(st, x, y) {
+    if (!canThrow(st)) return false;
+    const r = st.rings.find(r => r.mode === 'ready');
+    const d = dist(TOWER, { x, y });
+    r.mode = 'flying'; r.t0 = st.t; r.t1 = st.t + RULES.flight(d); r.x = x; r.y = y; r.who = -1;
+    st.events.push({ type: 'throw', x, y });
+    return true;
+  }
+  function canWhistle(st) { return !st.over && st.t >= st.whistle.ready; }
+  function blowWhistle(st) {
+    if (!canWhistle(st)) return false;
+    st.whistle.t0 = st.t; st.whistle.ready = st.t + RULES.whistleCooldown;
+    st.swimmers.forEach(s => { s.reply = null; });
+    st.events.push({ type: 'whistle' });
+    return true;
+  }
+  function hasCaptain(level) { return !!(level.canCall || (level.captain && level.captain.length)); }
+  function canCall(level, st) {
+    // you radio "all calm here, come take a look": you can't say that while someone is yelling
+    return !st.over && level.canCall !== false && hasCaptain(level) && st.captain.mode === 'away' && st.t >= st.captain.trustUntil &&
+      st.t >= st.captain.callableAt && !st.swimmers.some(loud);
+  }
+  function callCaptain(level, st) {
+    if (!canCall(level, st)) return false;
+    st.captain.mode = 'driving'; st.captain.t0 = st.t; st.captain.called = true;
+    st.events.push({ type: 'call' });
+    return true;
+  }
+
+  // ---------- the world moves ----------
+  function step(level, st, dt) {
+    if (st.over) return st;
+    const t0 = st.t, t1 = st.t + dt;
+    st.t = t1;
+    // swimmers
+    for (const s of st.swimmers) {
+      if (s.state === 'towed' || s.state === 'saved' || s.state === 'lost' || s.state === 'gone') continue;
+      const next = swimmerState(level, s, t1);
+      if (next !== s.state) {
+        const prev = s.state;
+        s.state = next; s.since = t1;
+        if (next === 'swim' && prev === 'away') st.events.push({ type: 'enter', who: s.id });
+        if (next === 'struggle') { s.wasLoud = true; st.events.push({ type: 'struggle', who: s.id }); }
+        if (next === 'drown') st.events.push({ type: 'quiet', who: s.id, fromStruggle: prev === 'struggle' });
+        if (next === 'lost') { st.lost++; st.events.push({ type: 'lost', who: s.id }); }
+      }
+      // gentle motion (deterministic): swimmers wander, strugglers drift out, the drowning hold still and sink
+      const k = s.id * 7.13;
+      if (s.state === 'swim') {
+        s.x = s.x0 + Math.sin(t1 * 0.5 + k) * 0.03; s.y = s.y0 + Math.cos(t1 * 0.37 + k) * 0.02;
+      } else if (s.state === 'struggle') {
+        s.y = Math.max(0.04, s.y - 0.012 * dt); s.x += Math.sin(t1 * 2.1 + k) * 0.004 * dt;
+        s.x0 = s.x; s.y0 = s.y;
+      } else if (s.state === 'drown') {
+        s.sink = Math.min(1, (t1 - s.since) / s.drown);
+      }
+    }
+    // whistle replies, as the sound reaches each swimmer
+    if (t1 - st.whistle.t0 < 3) {
+      for (const s of st.swimmers) {
+        if (s.reply || s.state === 'away' || s.state === 'gone' || s.state === 'towed' || s.state === 'saved' || s.state === 'lost') continue;
+        const reach = dist(TOWER, s) / RULES.whistleSpeed;
+        if (t1 - st.whistle.t0 >= reach) {
+          s.reply = { t: t1, kind: s.state === 'struggle' ? 'help' : s.state === 'drown' ? 'none' : 'wave' };
+          if (s.reply.kind === 'none' && s.flagged === false) s.flagged = t1;   // no answer: marked, and remembered
+          st.events.push({ type: 'reply', who: s.id, kind: s.reply.kind });
+        }
+      }
+    }
+    // rings
+    for (const r of st.rings) {
+      if (r.mode === 'flying' && t1 >= r.t1) {
+        // who can reach it?
+        let best = null, bd = 1e9;
+        for (const s of st.swimmers) {
+          if (!needsHelp(s)) continue;
+          const d = dist(s, r), reach = s.state === 'drown' ? RULES.reachDrown : RULES.reachStruggle;
+          if (d <= reach && d < bd) { bd = d; best = s; }
+        }
+        const d = dist(TOWER, r);
+        if (best) {
+          const quiet = best.state === 'drown';
+          const fast = Math.max(0, Math.round(50 - 10 * (t1 - best.trouble)));
+          const points = 100 + fast + (quiet ? 50 : 0);
+          best.state = 'towed'; best.since = t1; best.tx = r.x; best.ty = r.y;
+          r.mode = 'towing'; r.who = best.id; r.t0 = t1; r.t1 = t1 + RULES.tow(d);
+          st.score += points;
+          st.events.push({ type: 'catch', who: best.id, x: r.x, y: r.y, quiet, fast, points });
+        } else {
+          r.mode = 'retrieving'; r.t0 = t1; r.t1 = t1 + RULES.retrieve(d);
+          st.misses++;
+          st.events.push({ type: 'miss', x: r.x, y: r.y });
+        }
+      } else if (r.mode === 'towing' && t1 >= r.t1) {
+        const s = st.swimmers[r.who];
+        s.state = 'saved'; st.saved++;
+        st.events.push({ type: 'saved', who: s.id });
+        r.mode = 'ready'; r.who = -1;
+      } else if (r.mode === 'retrieving' && t1 >= r.t1) {
+        r.mode = 'ready';
+      }
+    }
+    // the Captain
+    const C = st.captain;
+    if (C.mode === 'away') {
+      // scheduled visits; skipped while he trusts the beach
+      const due = C.schedule.find(v => v > t0 - 1e-9 && v - RULES.captainWarn <= t1 + 1e-9);
+      C.warnFor = due != null && due >= C.trustUntil ? due : null;
+      const arrive = C.schedule.find(v => v > t0 - 1e-9 && v <= t1 + 1e-9);
+      if (arrive != null) {
+        C.schedule = C.schedule.filter(v => v !== arrive);
+        if (arrive >= C.trustUntil) { C.mode = 'looking'; C.t0 = arrive; C.called = false; C.loudAtStart = st.swimmers.filter(loud).map(s => s.id); st.events.push({ type: 'inspect' }); }
+        else st.events.push({ type: 'skip' });
+      }
+    } else if (C.mode === 'driving' && t1 - C.t0 >= RULES.captainDrive) {
+      C.mode = 'looking'; C.t0 = t1; C.loudAtStart = st.swimmers.filter(loud).map(s => s.id); st.events.push({ type: 'inspect' });
+    } else if (C.mode === 'looking' && t1 - C.t0 >= RULES.captainLook) {
+      // a strike is someone yelling the whole time he looked
+      const noisy = st.swimmers.filter(s => loud(s) && C.loudAtStart.includes(s.id)).map(s => s.id);
+      if (noisy.length) { st.strikes++; C.callableAt = t1 + 6; C.verdict = { ok: false, t: t1, noisy }; st.events.push({ type: 'strike', noisy }); }
+      else {
+        st.stars++; st.score += 100; C.trustUntil = t1 + RULES.captainTrust; C.verdict = { ok: true, t: t1 };
+        const quiet = st.swimmers.filter(s => s.state === 'drown').map(s => s.id);
+        st.events.push({ type: 'star', quiet });
+      }
+      C.mode = 'leaving'; C.t0 = t1;
+    } else if (C.mode === 'leaving' && t1 - C.t0 >= 1.2) {
+      C.mode = 'away';
+    }
+    // end of shift
+    const maxStrikes = level.strikes == null ? 1 : level.strikes;
+    if (level.endless) {
+      if (st.lost >= (level.lives || 3)) st.over = 'lost';
+      else if (st.strikes >= maxStrikes) st.over = 'fired';
+    } else {
+      if (st.lost > 0) st.over = 'lost';
+      else if (st.strikes >= maxStrikes) st.over = 'fired';
+      else if (t1 >= level.length && !st.rings.some(r => r.mode === 'towing') && !st.swimmers.some(needsHelp)) st.over = 'won';
+      else if (t1 >= level.length + 12) st.over = 'won';
+    }
+    if (st.over) st.events.push({ type: 'over', result: st.over });
+    return st;
+  }
+
+  // Stars come from points: [two, three] thresholds are set from the solver's own score on each level.
+  function stars(level, st) {
+    if (st.over !== 'won') return 0;
+    const [two, three] = level.stars || [Infinity, Infinity];
+    return st.score >= three ? 3 : st.score >= two ? 2 : 1;
+  }
+
+  const API = { TOWER, RULES, dist, hash, init, step, throwRing, blowWhistle, callCaptain, canThrow, canWhistle, canCall,
+    hasCaptain, needsHelp, loud, inspecting, swimmerState, stars };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.SW = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* levels.js */
+// STILL WATER levels. Three threads: Quiet (the fold-back signal), The Captain (refractory-check capture),
+// Calm water (certified collapse). Every level is checked by tools/check-levels.js.
+// Coordinates: x 0..1 across, y 0 (far out) .. 1 (the shoreline). Times in seconds.
+(function (root) {
+  'use strict';
+  const S = (x, y, more) => Object.assign({ kind: 'swimmer', x, y }, more);
+  const T = (x, y, more) => Object.assign({ kind: 'treader', x, y }, more);
+  const F = (x, y, more) => Object.assign({ kind: 'floater', x, y }, more);
+  const Q = (x, y, more) => Object.assign({ kind: 'silent', x, y }, more);
+
+  const THREADS = [
+    { id: 'quiet', name: 'Quiet', blurb: 'Drowning doesn’t look like drowning.' },
+    { id: 'captain', name: 'The Captain', blurb: 'He checks for noise. You choose when.' },
+    { id: 'calm', name: 'Calm water', blurb: 'The quietest beach passes every inspection.' },
+  ];
+
+  const LEVELS = [
+    // ---------------- Quiet ----------------
+    {
+      id: 'first', thread: 'quiet', name: 'First shift', length: 24, rings: 1, whistle: false,
+      intro: 'Someone yelling for help is in trouble. <b>Tap the water</b> next to them to throw the ring.',
+      swimmers: [
+        S(0.32, 0.62, { trouble: 1.5, struggle: 9 }),
+        S(0.70, 0.45, { trouble: 8, struggle: 9 }),
+        S(0.22, 0.30, { trouble: 13, struggle: 9 }),
+        S(0.62, 0.22, { trouble: 17.5, struggle: 9 }),
+        S(0.86, 0.72),
+        S(0.50, 0.40, { leave: 12 }),
+      ],
+    },
+    {
+      id: 'quiet', thread: 'quiet', name: 'Quiet', length: 24, rings: 1, whistle: false,
+      intro: 'Two at once, and you have one ring. Watch the one you can’t reach yet.',
+      swimmers: [
+        S(0.25, 0.62, { trouble: 3, struggle: 3, drown: 6 }),
+        S(0.80, 0.30, { trouble: 3.2, struggle: 2, drown: 6 }),
+        S(0.55, 0.45, { trouble: 12, struggle: 4, drown: 6 }),
+        S(0.15, 0.25, { trouble: 13, struggle: 2.5, drown: 5 }),
+        S(0.88, 0.70),
+        S(0.45, 0.20),
+      ],
+    },
+    {
+      id: 'waving', thread: 'quiet', name: 'Not waving', length: 26, rings: 1,
+      intro: 'Some people go under without a sound. <b>Blow the whistle</b>: everyone who’s fine waves back.',
+      swimmers: [
+        T(0.30, 0.36), T(0.72, 0.56), F(0.48, 0.64), T(0.88, 0.40),
+        Q(0.18, 0.20, { trouble: 4, drown: 6 }),
+        S(0.85, 0.15, { trouble: 4.5, struggle: 2, drown: 2.5 }),
+        Q(0.62, 0.28, { trouble: 13, drown: 7 }),
+        S(0.20, 0.68, { trouble: 14, struggle: 2.5, drown: 4 }),
+      ],
+    },
+    {
+      id: 'rush', thread: 'quiet', name: 'Rush hour', length: 32, rings: 2,
+      intro: 'Two rings now. Busy water, and not everyone in trouble will tell you.',
+      swimmers: [
+        S(0.25, 0.55, { trouble: 2, struggle: 3.5, drown: 5 }),
+        S(0.75, 0.50, { trouble: 2.5, struggle: 3, drown: 5 }),
+        S(0.50, 0.25, { trouble: 3, struggle: 2.5, drown: 5 }),
+        T(0.15, 0.30), F(0.62, 0.68), T(0.85, 0.25),
+        Q(0.38, 0.40, { trouble: 9, drown: 6 }),
+        S(0.80, 0.70, { trouble: 9.5, struggle: 3, drown: 5 }),
+        Q(0.70, 0.18, { trouble: 16, drown: 6 }),
+        S(0.12, 0.62, { trouble: 16.5, struggle: 2.5, drown: 5 }),
+        S(0.45, 0.60, { trouble: 17, struggle: 3, drown: 5 }),
+        Q(0.28, 0.15, { trouble: 23, drown: 5 }),
+        S(0.90, 0.45, { trouble: 23.5, struggle: 2.5, drown: 5 }),
+      ],
+    },
+    // ---------------- The Captain ----------------
+    {
+      id: 'inspect', thread: 'captain', name: 'Inspection', length: 30, rings: 1, strikes: 1, canCall: false,
+      captain: [12, 26],
+      intro: 'The Captain inspects your beach. Anyone <b>yelling</b> when he looks is a strike. Clear the water first.',
+      swimmers: [
+        S(0.30, 0.60, { trouble: 3, struggle: 8 }),
+        S(0.72, 0.40, { trouble: 6.5, struggle: 8 }),
+        S(0.20, 0.28, { trouble: 8.5, struggle: 8 }),
+        S(0.60, 0.22, { trouble: 19, struggle: 8 }),
+        S(0.40, 0.48, { trouble: 21.5, struggle: 8 }),
+        S(0.86, 0.70), T(0.12, 0.45),
+      ],
+    },
+    {
+      id: 'timing', thread: 'captain', name: 'Your timing', length: 34, rings: 1, strikes: 1, canCall: true,
+      captain: [24],
+      intro: 'A rush is coming right when he’s due. After a clean inspection he stays away a while. <b>Radio him in early.</b>',
+      swimmers: [
+        S(0.35, 0.58, { trouble: 3, struggle: 7 }),
+        S(0.15, 0.30, { trouble: 20.5, struggle: 7 }),
+        S(0.85, 0.25, { trouble: 21, struggle: 7 }),
+        S(0.55, 0.15, { trouble: 21.5, struggle: 7 }),
+        S(0.70, 0.62, { trouble: 22, struggle: 7 }),
+        T(0.45, 0.40), S(0.90, 0.75), S(0.10, 0.70, { leave: 18 }),
+      ],
+    },
+    {
+      id: 'twice', thread: 'captain', name: 'Twice', length: 46, rings: 1, strikes: 1, canCall: true,
+      captain: [16, 40],
+      intro: 'Two visits, two rushes. His trust runs out after 20 seconds.',
+      swimmers: [
+        S(0.30, 0.55, { trouble: 1.5, struggle: 6 }),
+        S(0.20, 0.30, { trouble: 13.5, struggle: 6 }),
+        S(0.80, 0.30, { trouble: 14, struggle: 6 }),
+        S(0.60, 0.60, { trouble: 15, struggle: 6 }),
+        S(0.45, 0.20, { trouble: 24, struggle: 6 }),
+        S(0.15, 0.62, { trouble: 37.5, struggle: 6 }),
+        S(0.75, 0.18, { trouble: 38, struggle: 6 }),
+        S(0.88, 0.55, { trouble: 39, struggle: 6 }),
+        T(0.50, 0.42), S(0.92, 0.80),
+      ],
+    },
+    // ---------------- Calm water ----------------
+    {
+      id: 'clean', thread: 'calm', name: 'Clean bill', length: 32, rings: 1, strikes: 1, canCall: true,
+      captain: [26],
+      intro: 'When the Captain looks, you see what he sees: <b>only noise</b>. Calm water isn’t the same as safe water.',
+      swimmers: [
+        S(0.60, 0.60, { trouble: 2, struggle: 6 }),
+        Q(0.20, 0.30, { trouble: 6, drown: 5 }),
+        S(0.75, 0.35, { trouble: 11.5, struggle: 5 }),
+        S(0.30, 0.55, { trouble: 13, struggle: 5 }),
+        S(0.85, 0.60, { trouble: 15, struggle: 5 }),
+        S(0.15, 0.42, { trouble: 17.5, struggle: 5 }),
+        S(0.60, 0.20, { trouble: 19.5, struggle: 5 }),
+        S(0.40, 0.30, { trouble: 21, struggle: 5 }),
+        S(0.72, 0.50, { trouble: 23.5, struggle: 5 }),
+        S(0.25, 0.20, { trouble: 25, struggle: 5 }),
+        T(0.55, 0.48), F(0.70, 0.72), T(0.10, 0.18),
+      ],
+    },
+    {
+      id: 'last', thread: 'calm', name: 'Last light', length: 50, rings: 2, strikes: 1, canCall: true,
+      captain: [20, 44],
+      intro: 'Everything at once. Keep them alive, keep him happy, and don’t believe the calm.',
+      swimmers: [
+        S(0.30, 0.55, { trouble: 2, struggle: 4, drown: 4 }),
+        S(0.70, 0.45, { trouble: 2.5, struggle: 3, drown: 4 }),
+        Q(0.50, 0.30, { trouble: 7, drown: 5 }),
+        T(0.15, 0.35), F(0.85, 0.65), T(0.62, 0.70), T(0.40, 0.18),
+        S(0.20, 0.25, { trouble: 18, struggle: 4 }),
+        S(0.80, 0.25, { trouble: 18.4, struggle: 4 }),
+        S(0.55, 0.62, { trouble: 18.8, struggle: 4 }),
+        S(0.10, 0.60, { trouble: 19.2, struggle: 4 }),
+        S(0.68, 0.40, { trouble: 19.5, struggle: 4 }),
+        Q(0.75, 0.15, { trouble: 27, drown: 5 }),
+        S(0.35, 0.40, { trouble: 30, struggle: 3, drown: 4 }),
+        S(0.25, 0.20, { trouble: 42, struggle: 4 }),
+        S(0.88, 0.40, { trouble: 42.4, struggle: 4 }),
+        S(0.60, 0.25, { trouble: 42.8, struggle: 4 }),
+        S(0.45, 0.65, { trouble: 43.2, struggle: 4 }),
+        S(0.12, 0.45, { trouble: 43.5, struggle: 4 }),
+      ],
+    },
+  ];
+
+  // ---------------- Endless summer ----------------
+  // A long, seeded day at the beach: swimmers arrive and leave, trouble comes faster as the day goes on, the Captain
+  // drops by every half minute or so. Three swimmers lost and the shift is over.
+  function endless(seed) {
+    let n = (seed >>> 0) || 1;
+    const rnd = () => { n = (n * 1664525 + 1013904223) >>> 0; return n / 4294967296; };
+    const sw = [];
+    const kinds = ['swimmer', 'swimmer', 'swimmer', 'treader', 'treader', 'floater'];
+    // regulars who never get in trouble keep the water busy
+    for (let i = 0; i < 5; i++) sw.push({ kind: kinds[i], x: 0.1 + 0.8 * rnd(), y: 0.15 + 0.6 * rnd(), leave: 30 + 60 * rnd() });
+    let t = 2;
+    while (t < 900) {
+      const pace = Math.max(1.8, 7 - t / 45);            // seconds between incidents, shrinking through the day
+      const silent = t > 25 && rnd() < Math.min(0.4, 0.12 + t / 600);
+      const x = 0.08 + 0.84 * rnd(), y = 0.1 + 0.65 * rnd();
+      const enter = Math.max(0, t - 4 - 6 * rnd());
+      if (silent) sw.push({ kind: 'silent', x, y, enter, trouble: t, drown: Math.max(3.5, 6 - t / 120) });
+      else sw.push({ kind: 'swimmer', x, y, enter, trouble: t, struggle: Math.max(2.5, 6 - t / 90), drown: Math.max(3.5, 5.5 - t / 150) });
+      // a calm swimmer arrives now and then, to be quiet and fine
+      if (rnd() < 0.45) sw.push({ kind: kinds[Math.floor(rnd() * kinds.length)], x: 0.08 + 0.84 * rnd(), y: 0.12 + 0.65 * rnd(), enter: t, leave: t + 15 + 30 * rnd() });
+      t += pace * (0.6 + 0.8 * rnd());
+    }
+    const captain = [];
+    for (let c = 30 + 10 * rnd(); c < 900; c += 35 + 15 * rnd()) captain.push(+c.toFixed(1));
+    return { id: 'endless', thread: 'endless', name: 'Endless summer', endless: true, lives: 3, length: 1e9, rings: 2, strikes: 3, canCall: true, captain, swimmers: sw, seed };
+  }
+
+  // Written by tools/check-levels.js: [points for 2 stars, points for 3 stars], from the solver's own score.
+  const STARS = { first: [420, 510], quiet: [430, 530], waving: [440, 540], rush: [1100, 1350], inspect: [590, 720], timing: [630, 770], twice: [890, 1090], clean: [1050, 1290], last: [1720, 2110] };
+  for (const L of LEVELS) if (STARS[L.id]) L.stars = STARS[L.id];
+
+  const API = { THREADS, LEVELS, endless };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.SWLevels = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* audio.js */
+// STILL WATER sound: a small WebAudio synth. No files. Everything is quiet until the reader turns sound on.
+const SWAudio = (() => {
+  let ac = null, master = null, on = false, sea = null;
+  function ensure() {
+    if (ac) return true;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      ac = new AC(); master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination);
+      return true;
+    } catch (e) { return false; }
+  }
+  function noiseBuffer(secs) {
+    const b = ac.createBuffer(1, Math.floor(ac.sampleRate * secs), ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  }
+  function tone(type, f0, f1, dur, vol, delay) {
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
+    return o;
+  }
+  function noise(dur, f0, f1, vol, q, delay) {
+    const t = ac.currentTime + (delay || 0), s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = noiseBuffer(dur + 0.05); f.type = 'bandpass'; f.Q.value = q || 1;
+    f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + 0.05);
+  }
+  function startSea() {
+    if (sea || !ac) return;
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    s.buffer = noiseBuffer(4); s.loop = true; f.type = 'lowpass'; f.frequency.value = 520;
+    g.gain.value = 0.05; lfo.frequency.value = 0.12; lg.gain.value = 0.035;
+    lfo.connect(lg); lg.connect(g.gain); s.connect(f); f.connect(g); g.connect(master);
+    s.start(); lfo.start(); sea = { s, lfo };
+  }
+  function stopSea() { if (!sea) return; try { sea.s.stop(); sea.lfo.stop(); } catch (e) {} sea = null; }
+
+  const sounds = {
+    throw() { noise(0.25, 600, 2400, 0.12, 0.8); },
+    splash() { noise(0.35, 1800, 300, 0.25, 0.7); },
+    catch() { tone('sine', 520, 780, 0.12, 0.12); tone('sine', 780, 1040, 0.14, 0.1, 0.09); },
+    saved() { [523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, 0, 0.18, 0.12, i * 0.07)); },
+    quietSave() { [392, 523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, 0, 0.22, 0.13, i * 0.06)); },
+    help() { tone('sawtooth', 700, 520, 0.16, 0.03); },
+    whistle() {
+      const o = tone('square', 2350, 0, 0.32, 0.05);
+      try { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 38; lg.gain.value = 180; l.connect(lg); lg.connect(o.frequency); l.start(); l.stop(ac.currentTime + 0.35); } catch (e) {}
+    },
+    flag() { tone('sine', 330, 300, 0.25, 0.08); tone('sine', 330, 300, 0.25, 0.08, 0.28); },
+    lost() { tone('sine', 330, 110, 1.1, 0.16); },
+    radio() { noise(0.18, 3000, 3000, 0.06, 2); tone('square', 880, 0, 0.08, 0.05, 0.2); tone('square', 1175, 0, 0.1, 0.05, 0.3); },
+    horn() { tone('square', 392, 0, 0.16, 0.06); tone('square', 392, 0, 0.22, 0.06, 0.22); },
+    strike() { tone('sawtooth', 150, 110, 0.5, 0.12); },
+    star() { tone('sine', 1047, 0, 0.4, 0.1); tone('sine', 1568, 0, 0.5, 0.07, 0.1); },
+    stamp() { noise(0.12, 200, 120, 0.4, 0.5); tone('sine', 90, 60, 0.18, 0.2); },
+    win() { [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone('triangle', f, 0, 0.22, 0.12, i * 0.11)); },
+    fail() { [392, 330, 262].forEach((f, i) => tone('triangle', f, 0, 0.3, 0.12, i * 0.18)); },
+    tick() { tone('sine', 1200, 0, 0.04, 0.04); },
+  };
+  return {
+    get on() { return on; },
+    setOn(v) {
+      on = !!v;
+      if (on && ensure()) { try { ac.resume(); } catch (e) {} startSea(); } else stopSea();
+    },
+    play(name) { if (!on || !ensure() || !sounds[name]) return; try { sounds[name](); } catch (e) {} },
+  };
+})();
+
+</script>
+<script>
+/* render.js */
+// STILL WATER renderer. Top-down beach. Every splash and shout sends rings across the water, so the sea is a map
+// of noise, and a swimmer in real trouble shows up as a hole in it. During an inspection the picture switches to
+// what the Captain can see: only the rings.
+(function (root) {
+  'use strict';
+  const SW = root.SW;
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const ease = t => t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const hash = SW.hash;
+
+  const SKIN = ['#f1c7a3', '#d9a27e', '#a86f4c', '#7a4a2f', '#f4d2b8', '#c68b63'];
+  const HAIR = ['#2b2018', '#6b3e1f', '#d9b25e', '#1c1c1c', '#9a4a26', '#4a3a2a'];
+  const CAP = ['#ff5a5f', '#ffd166', '#06d6a0', '#118ab2', '#ef476f', '#8338ec', '#fb8500'];
+
+  function createRenderer(canvas) {
+    const ctx = canvas.getContext('2d');
+    let W = 0, H = 0, waterH = 0, dpr = 1;
+    const noise = [];                 // sound rings on the water: {x,y,t0,r,str}
+    const decor = [];
+
+    function resize(cssW) {
+      dpr = Math.min(2.5, root.devicePixelRatio || 1);
+      W = Math.round(cssW); H = Math.round(cssW * (cssW < 480 ? 1.12 : 0.92));
+      waterH = Math.round(H * 0.8);
+      canvas.style.height = H + 'px';
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      decor.length = 0;
+      // towels and umbrellas, keeping the middle of the sand clear for the tower and the Captain's jeep
+      const spots = [[0.06, 0.7], [0.17, 0.3], [0.28, 0.75], [0.8, 0.35], [0.9, 0.78], [0.97, 0.25], [0.36, 0.25]];
+      spots.forEach(([u, v], i) => decor.push({ x: u * W, y: waterH + 14 + v * (H - waterH - 30), c: CAP[i % CAP.length], k: hash(i + 4) }));
+    }
+    const px = p => ({ x: p.x * W, y: p.y * waterH });
+    // logic distances are in water units, so a reach circle is an ellipse on screen
+    function reachPath(x, y, r) { ctx.beginPath(); ctx.ellipse(x, y, r * W, r * waterH, 0, 0, 6.283); }
+    const towerPx = () => ({ x: W * 0.5, y: waterH + (H - waterH) * 0.42 });
+    const scale = () => clamp(W / 360, 0.95, 1.6);
+
+    // ---------- the sea ----------
+    function sea(t, vision) {
+      const g = ctx.createLinearGradient(0, 0, 0, waterH);
+      g.addColorStop(0, vision ? '#0c1d2b' : '#1b6f9c');
+      g.addColorStop(0.55, vision ? '#0f2433' : '#2a9cc0');
+      g.addColorStop(1, vision ? '#14303f' : '#5fd0d6');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, waterH);
+      if (vision) return;
+      // swells rolling toward shore
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1.4 * scale();
+      for (let k = 0; k < 9; k++) {
+        const y = ((k / 9 + t * 0.018) % 1) * waterH;
+        ctx.beginPath();
+        for (let x = -10; x <= W + 10; x += 12) {
+          const yy = y + Math.sin(x * 0.03 + k * 1.7 + t * 0.6) * 3 + Math.sin(x * 0.011 + k) * 5;
+          x === -10 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+        }
+        ctx.globalAlpha = 0.35 + 0.65 * (y / waterH);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // sparkle
+      for (let i = 0; i < 26; i++) {
+        const x = hash(i * 3.1) * W, y = hash(i * 7.7) * waterH * 0.9;
+        const a = Math.max(0, Math.sin(t * 1.7 + i * 2.3)) * 0.55;
+        ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(x, y, 2 * scale(), 2 * scale());
+      }
+    }
+
+    function sand(t) {
+      const top = waterH;
+      const g = ctx.createLinearGradient(0, top, 0, H);
+      g.addColorStop(0, '#f3d9a4'); g.addColorStop(1, '#e9c584');
+      ctx.fillStyle = g; ctx.fillRect(0, top, W, H - top);
+      // wet sand and foam line
+      ctx.fillStyle = 'rgba(190,150,90,0.35)';
+      ctx.beginPath(); ctx.moveTo(0, top);
+      for (let x = 0; x <= W; x += 10) ctx.lineTo(x, top + 8 + Math.sin(x * 0.04 + t * 0.9) * 3);
+      ctx.lineTo(W, top); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3 * scale();
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 8) { const y = top + 2 + Math.sin(x * 0.05 + t * 1.2) * 2.5; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+      // towels and umbrellas
+      for (const d of decor) {
+        ctx.save(); ctx.translate(d.x, d.y); ctx.rotate((d.k - 0.5) * 0.6);
+        ctx.fillStyle = d.c; ctx.globalAlpha = 0.85; ctx.fillRect(-12 * scale(), -6 * scale(), 24 * scale(), 12 * scale());
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(-12 * scale(), -1.5 * scale(), 24 * scale(), 3 * scale());
+        ctx.restore();
+        if (d.k > 0.5) {
+          ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.ellipse(d.x + 10, d.y + 8, 18 * scale(), 9 * scale(), 0, 0, 6.283); ctx.fill();
+          for (let s = 0; s < 8; s++) {
+            ctx.fillStyle = s % 2 ? '#ffffff' : d.c;
+            ctx.beginPath(); ctx.moveTo(d.x + 4, d.y - 4); ctx.arc(d.x + 4, d.y - 4, 16 * scale(), s * 0.785, (s + 1) * 0.785); ctx.fill();
+          }
+        }
+      }
+    }
+
+    function tower(t, state, vision) {
+      const p = towerPx(), s = scale();
+      ctx.save(); ctx.translate(p.x, p.y);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.ellipse(6, 20 * s, 30 * s, 10 * s, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#d64545'; ctx.fillRect(-22 * s, -14 * s, 44 * s, 30 * s);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-22 * s, -2 * s, 44 * s, 6 * s);
+      ctx.fillStyle = '#b83232'; ctx.beginPath(); ctx.moveTo(-28 * s, -14 * s); ctx.lineTo(0, -26 * s); ctx.lineTo(28 * s, -14 * s); ctx.fill();
+      // the lifeguard
+      const busy = state && SW.inspecting(state);
+      ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.arc(0, -4 * s, 8 * s, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#f1c7a3'; ctx.beginPath(); ctx.arc(0, -9 * s, 5.5 * s, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#2b2018'; ctx.beginPath(); ctx.arc(0, -11 * s, 5.5 * s, Math.PI, 0); ctx.fill();
+      if (busy) { ctx.fillStyle = '#333'; ctx.font = `${Math.round(10 * s)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('…', 0, -22 * s); ctx.textAlign = 'start'; }
+      // rings waiting on the tower
+      if (state) {
+        const ready = state.rings.filter(r => r.mode === 'ready').length;
+        for (let k = 0; k < state.rings.length; k++) {
+          const rx = (-14 + k * 14 - (state.rings.length - 1) * 7 + 14) * s, ry = 10 * s;
+          ctx.globalAlpha = k < ready ? 1 : 0.25;
+          ringShape(rx, ry, 6 * s);
+          ctx.globalAlpha = 1;
+        }
+      }
+      ctx.restore();
+    }
+
+    function ringShape(x, y, r) {
+      ctx.lineWidth = r * 0.55;
+      for (let q = 0; q < 4; q++) {
+        ctx.strokeStyle = q % 2 ? '#ffffff' : '#ff3b3b';
+        ctx.beginPath(); ctx.arc(x, y, r, q * 1.5708, (q + 1) * 1.5708); ctx.stroke();
+      }
+    }
+
+    // ---------- noise rings ----------
+    function emitNoise(state, t) {
+      for (const s of state.swimmers) {
+        const p = px(s);
+        const k = s.id * 1.37;
+        let every = 0, str = 0;
+        if (s.state === 'struggle') { every = 0.22; str = 1; }
+        else if (s.state === 'swim' && s.kind === 'swimmer') { every = 1.1; str = 0.35; }
+        else if (s.state === 'swim' && s.kind !== 'floater') { every = 2.4; str = 0.18; }
+        if (!every) continue;
+        const slot = Math.floor((t + k) / every), last = s._slot;
+        if (last !== slot) { s._slot = slot; noise.push({ x: p.x + (hash(slot + k) - 0.5) * 6, y: p.y + (hash(slot * 1.3 + k) - 0.5) * 6, t0: t, str }); }
+      }
+      while (noise.length > 220) noise.shift();
+    }
+    function drawNoise(t, vision) {
+      const s = scale();
+      for (let i = noise.length - 1; i >= 0; i--) {
+        const n = noise[i], age = t - n.t0, life = 0.9 + 1.3 * n.str;
+        if (age > life) { noise.splice(i, 1); continue; }
+        const k = age / life;
+        const r = (6 + 46 * n.str) * s * ease(k) + 4 * s;
+        const a = (1 - k) * (0.25 + 0.6 * n.str) * (vision ? 1.4 : 1);
+        ctx.strokeStyle = vision ? `rgba(255,214,120,${clamp(a, 0, 1)})` : `rgba(255,255,255,${a})`;
+        ctx.lineWidth = (1 + 2.2 * n.str * (1 - k)) * s;
+        ctx.beginPath(); ctx.ellipse(n.x, n.y, r, r * 0.6, 0, 0, 6.283); ctx.stroke();
+      }
+    }
+
+    // ---------- swimmers ----------
+    function look(s) {
+      return { skin: SKIN[Math.floor(hash(s.id + 1) * SKIN.length)], hair: HAIR[Math.floor(hash(s.id + 2) * HAIR.length)], cap: CAP[Math.floor(hash(s.id + 3) * CAP.length)], capOn: hash(s.id + 4) > 0.55 };
+    }
+
+    function head(x, y, r, L, face, tilt) {
+      ctx.fillStyle = L.skin; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+      ctx.fillStyle = L.capOn ? L.cap : L.hair;
+      ctx.beginPath(); ctx.arc(x, y - r * 0.15 + (tilt || 0) * r * 0.4, r * 1.02, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+      // face
+      ctx.fillStyle = '#222';
+      const ey = y + r * 0.05 - (tilt || 0) * r * 0.35;
+      if (face === 'shut') {
+        ctx.strokeStyle = '#222'; ctx.lineWidth = Math.max(1, r * 0.14);
+        ctx.beginPath(); ctx.moveTo(x - r * 0.45, ey); ctx.lineTo(x - r * 0.2, ey); ctx.moveTo(x + r * 0.2, ey); ctx.lineTo(x + r * 0.45, ey); ctx.stroke();
+      } else if (face === 'up') {
+        ctx.beginPath(); ctx.arc(x - r * 0.32, ey - r * 0.1, r * 0.12, 0, 6.283); ctx.arc(x + r * 0.32, ey - r * 0.1, r * 0.12, 0, 6.283); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(x - r * 0.32, ey, r * 0.12, 0, 6.283); ctx.arc(x + r * 0.32, ey, r * 0.12, 0, 6.283); ctx.fill();
+      }
+      ctx.strokeStyle = '#222'; ctx.lineWidth = Math.max(1, r * 0.12);
+      if (face === 'scream') { ctx.fillStyle = '#5a1a1a'; ctx.beginPath(); ctx.ellipse(x, y + r * 0.48, r * 0.22, r * 0.26, 0, 0, 6.283); ctx.fill(); }
+      else if (face === 'happy') { ctx.beginPath(); ctx.arc(x, y + r * 0.3, r * 0.3, 0.2, Math.PI - 0.2); ctx.stroke(); }
+      else if (face === 'up') { ctx.beginPath(); ctx.ellipse(x, y + r * 0.42, r * 0.14, r * 0.09, 0, 0, 6.283); ctx.stroke(); }
+    }
+
+    function swimmer(s, t, state) {
+      const L = look(s), sc = scale();
+      const r = 9.5 * sc;
+      let p = px(s);
+      if (s.state === 'towed') {
+        const ring = state.rings.find(q => q.who === s.id);
+        if (ring) {
+          const tw = towerPx(), k = ease((state.t - ring.t0) / (ring.t1 - ring.t0));
+          const a = px({ x: s.tx, y: s.ty });
+          p = { x: lerp(a.x, tw.x, k), y: lerp(a.y, Math.min(tw.y, waterH + 6), k) };
+          ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2 * sc;
+          ctx.beginPath(); ctx.moveTo(tw.x, tw.y - 10 * sc); ctx.quadraticCurveTo((tw.x + p.x) / 2, (tw.y + p.y) / 2 + 12 * sc, p.x, p.y); ctx.stroke();
+          ringShape(p.x, p.y + r * 0.6, r * 1.15);
+          head(p.x, p.y, r, L, 'happy');
+        }
+        return;
+      }
+      if (s.state === 'away' || s.state === 'saved' || s.state === 'gone') return;
+      const bob = Math.sin(t * 2.2 + s.id) * 1.2 * sc;
+      const fade = s.enter > 0 ? clamp((state.t - s.enter) / 0.8, 0, 1) : 1;
+      ctx.globalAlpha = fade;
+      if (s.state === 'lost') {
+        const age = state.t - s.since;
+        if (age > 2.5) return;
+        for (let k = 0; k < 5; k++) {
+          const yy = p.y - ((age * 18 + k * 7) % 22) * sc;
+          ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - age / 2.5)})`; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(p.x + Math.sin(k * 2 + age * 3) * 4 * sc, yy, (1.5 + k % 3) * sc, 0, 6.283); ctx.stroke();
+        }
+        return;
+      }
+      // shadow of the body under water
+      ctx.fillStyle = 'rgba(10,50,70,0.25)';
+      if (s.kind === 'floater') {
+        // on an inflatable ring
+        ctx.strokeStyle = L.cap; ctx.lineWidth = 5 * sc; ctx.beginPath(); ctx.arc(p.x, p.y + bob, r * 1.7, 0, 6.283); ctx.stroke();
+        ctx.fillStyle = L.skin; ctx.beginPath(); ctx.ellipse(p.x + r * 1.1, p.y + bob, r * 1.3, r * 0.5, 0.2, 0, 6.283); ctx.fill();
+        head(p.x - r * 0.6, p.y + bob, r, L, 'shut');
+        ctx.fillStyle = '#111'; ctx.fillRect(p.x - r * 1.05, p.y + bob - r * 0.1, r * 0.9, r * 0.28);
+      } else if (s.state === 'swim' && s.kind === 'swimmer') {
+        const dir = Math.cos(t * 0.37 + s.id * 7.13) > 0 ? 1 : -1;
+        ctx.beginPath(); ctx.ellipse(p.x - dir * r * 1.4, p.y + 2 * sc, r * 1.9, r * 0.6, 0, 0, 6.283); ctx.fill();
+        const st = Math.sin(t * 4 + s.id);
+        ctx.strokeStyle = L.skin; ctx.lineWidth = 2.6 * sc; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + dir * r * (1 + 0.6 * st), p.y - r * 0.9); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + dir * r * (1 - 0.6 * st), p.y + r * 0.9); ctx.stroke();
+        head(p.x, p.y + bob * 0.3, r, L, 'happy');
+      } else if (s.state === 'swim') {
+        // treading water: upright and calm
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1 * sc;
+        ctx.beginPath(); ctx.ellipse(p.x, p.y + r * 0.7, r * 1.5, r * 0.5, 0, 0, 6.283); ctx.stroke();
+        head(p.x, p.y + bob, r, L, 'calm');
+      } else if (s.state === 'struggle') {
+        const w = Math.sin(t * 11 + s.id * 3);
+        ctx.strokeStyle = L.skin; ctx.lineWidth = 2.8 * sc; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(p.x - r * 0.6, p.y); ctx.lineTo(p.x - r * (1.4 + 0.4 * w), p.y - r * (1.9 + 0.5 * w)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x + r * 0.6, p.y); ctx.lineTo(p.x + r * (1.4 - 0.4 * w), p.y - r * (1.9 - 0.5 * w)); ctx.stroke();
+        // splashes
+        for (let k = 0; k < 6; k++) {
+          const a = t * 6 + k * 1.1 + s.id, d = r * (1.3 + 0.8 * Math.abs(Math.sin(a * 1.7)));
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.beginPath(); ctx.arc(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d * 0.6, 1.6 * sc, 0, 6.283); ctx.fill();
+        }
+        head(p.x, p.y + Math.sin(t * 9 + s.id) * 2 * sc, r, L, 'scream');
+        bubble(p.x, p.y - r * 3.1, 'HELP!', '#e63946', sc);
+      } else if (s.state === 'drown') {
+        // The instinctive drowning response: upright, head back, mouth at the waterline, arms pressing down, no
+        // sound. For most of it they look like someone calmly treading water. Only near the end do they go under.
+        const k = s.sink, late = clamp((k - 0.74) / 0.26, 0, 1);
+        const dip = Math.sin(t * 1.6 + s.id) * 0.5 + 0.5;          // bobbing: mouth under, mouth up
+        head(p.x, p.y + late * r * 0.5 + dip * r * 0.12, r * (1 - 0.18 * late), L, late > 0.2 ? 'up' : 'calm', 0.35 + 0.65 * late);
+        if (late > 0) {
+          ctx.fillStyle = `rgba(40,140,175,${0.25 + 0.65 * late})`;
+          ctx.beginPath(); ctx.rect(p.x - r * 1.3, p.y + r * (0.6 - 1.5 * late), r * 2.6, r * 2); ctx.fill();
+          for (let q = 0; q < 3; q++) {
+            const a = (t * 1.3 + q * 0.33) % 1;
+            ctx.strokeStyle = `rgba(255,255,255,${0.6 * (1 - a) * late})`; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(p.x + (q - 1) * r * 0.5, p.y - a * r * 1.4, (1.2 + q * 0.4) * sc, 0, 6.283); ctx.stroke();
+          }
+        }
+        // no ripple ring: they aren't kicking
+      }
+      // flagged by the whistle: nobody answered from here
+      if (s.flagged !== false && s.flagged != null && s.state === 'drown') {
+        const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+        ctx.strokeStyle = `rgba(255,70,80,${0.55 + 0.45 * pulse})`; ctx.lineWidth = 2 * sc; ctx.setLineDash([4 * sc, 3 * sc]);
+        reachPath(p.x, p.y, SW.RULES.reachDrown); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = '#ff4650'; ctx.font = `bold ${Math.round(13 * sc)}px -apple-system, sans-serif`; ctx.textAlign = 'center';
+        ctx.fillText('!', p.x + SW.RULES.reachDrown * W + 4 * sc, p.y - SW.RULES.reachDrown * waterH); ctx.textAlign = 'start';
+      }
+      // whistle reply
+      if (s.reply && state.t - s.reply.t < 1.6) {
+        const a = 1 - (state.t - s.reply.t) / 1.6;
+        ctx.globalAlpha = Math.min(1, a * 2);
+        if (s.reply.kind === 'wave') bubble(p.x, p.y - r * 2.8, 'OK!', '#2a7d4f', sc);
+        ctx.globalAlpha = 1;
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function fitText(text, x, y, maxW) {
+      let size = parseFloat(ctx.font.match(/(\d+(?:\.\d+)?)px/)[1]);
+      while (ctx.measureText(text).width > maxW && size > 8) { size -= 0.5; ctx.font = ctx.font.replace(/\d+(?:\.\d+)?px/, size + 'px'); }
+      ctx.fillText(text, x, y);
+    }
+    function bubble(x, y, text, col, sc, dark) {
+      ctx.font = `bold ${Math.round(11 * sc)}px -apple-system, Segoe UI, sans-serif`;
+      const w = ctx.measureText(text).width + 10 * sc, h = 17 * sc;
+      x = clamp(x, w / 2 + 2, W - w / 2 - 2);
+      ctx.fillStyle = dark ? 'rgba(4,30,44,0.88)' : 'rgba(255,255,255,0.95)';
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - w / 2, y - h / 2, w, h, 6 * sc) : ctx.rect(x - w / 2, y - h / 2, w, h); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x - 4 * sc, y + h / 2); ctx.lineTo(x, y + h / 2 + 5 * sc); ctx.lineTo(x + 4 * sc, y + h / 2); ctx.fill();
+      ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(text, x, y + 0.5); ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+    }
+
+    // ---------- rings in the air ----------
+    function rings(state) {
+      const tw = towerPx(), sc = scale();
+      for (const r of state.rings) {
+        if (r.mode === 'flying') {
+          const k = clamp((state.t - r.t0) / (r.t1 - r.t0), 0, 1);
+          const tgt = px(r);
+          const x = lerp(tw.x, tgt.x, k), y = lerp(tw.y - 10 * sc, tgt.y, k);
+          const h = Math.sin(k * Math.PI) * 40 * sc;
+          ctx.fillStyle = 'rgba(0,40,60,0.25)'; ctx.beginPath(); ctx.ellipse(x, y, 8 * sc, 4 * sc, 0, 0, 6.283); ctx.fill();
+          ringShape(x, y - h, (7 + 3 * Math.sin(k * Math.PI)) * sc);
+          // target marker
+          ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+          reachPath(tgt.x, tgt.y, SW.RULES.reachStruggle); ctx.stroke(); ctx.setLineDash([]);
+        } else if (r.mode === 'retrieving') {
+          const k = clamp((state.t - r.t0) / (r.t1 - r.t0), 0, 1);
+          const a = px(r), x = lerp(a.x, tw.x, ease(k)), y = lerp(a.y, Math.min(tw.y, waterH + 4), ease(k));
+          ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(tw.x, tw.y - 10 * sc); ctx.lineTo(x, y); ctx.stroke();
+          ringShape(x, y, 7 * sc);
+        }
+      }
+    }
+
+    // ---------- the Captain ----------
+    function captain(state, level, t) {
+      if (!level || !(level.captain || level.canCall)) return;
+      const C = state.captain, sc = scale(), tw = towerPx();
+      const stop = { x: tw.x + 52 * sc, y: tw.y + 8 * sc }, edge = { x: W + 40, y: tw.y + 8 * sc };
+      let pos = null;
+      if (C.mode === 'driving') pos = { x: lerp(edge.x, stop.x, ease((state.t - C.t0) / SW.RULES.captainDrive)), y: stop.y };
+      else if (C.mode === 'looking') pos = stop;
+      else if (C.mode === 'leaving') pos = { x: lerp(stop.x, edge.x, ease((state.t - C.t0) / 1.2)), y: stop.y };
+      else if (C.warnFor != null) {
+        const left = C.warnFor - state.t;
+        pos = { x: lerp(edge.x, stop.x, ease(1 - left / SW.RULES.captainWarn)), y: stop.y };
+      }
+      if (!pos) return;
+      // jeep
+      ctx.save(); ctx.translate(pos.x, pos.y);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(2, 9 * sc, 22 * sc, 6 * sc, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#ffd23f'; ctx.fillRect(-20 * sc, -9 * sc, 40 * sc, 16 * sc);
+      ctx.fillStyle = '#2a2a2a'; ctx.fillRect(-16 * sc, 6 * sc, 9 * sc, 4 * sc); ctx.fillRect(7 * sc, 6 * sc, 9 * sc, 4 * sc);
+      ctx.fillStyle = '#7fd4ff'; ctx.fillRect(-14 * sc, -7 * sc, 10 * sc, 7 * sc);
+      // the Captain: hat and clipboard
+      ctx.fillStyle = '#f1c7a3'; ctx.beginPath(); ctx.arc(4 * sc, -12 * sc, 5 * sc, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#1d3557'; ctx.fillRect(-1 * sc, -19 * sc, 10 * sc, 4 * sc); ctx.fillRect(-3 * sc, -16 * sc, 14 * sc, 2 * sc);
+      ctx.fillStyle = '#fff'; ctx.fillRect(9 * sc, -11 * sc, 6 * sc, 8 * sc);
+      ctx.restore();
+      if (C.mode === 'looking') {
+        // his gaze sweeps the water; he only notices noise
+        const k = (state.t - C.t0) / SW.RULES.captainLook;
+        const ang = -Math.PI / 2 + Math.sin(k * Math.PI * 2) * 0.9;
+        const g = ctx.createRadialGradient(pos.x, pos.y - 10, 10, pos.x, pos.y - 10, H);
+        g.addColorStop(0, 'rgba(255,220,120,0.28)'); g.addColorStop(1, 'rgba(255,220,120,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(pos.x, pos.y - 10); ctx.arc(pos.x, pos.y - 10, H * 1.2, ang - 0.35, ang + 0.35); ctx.closePath(); ctx.fill();
+        bubble(pos.x - 10 * sc, pos.y - 34 * sc, 'Inspection!', '#1d3557', sc);
+      } else if (C.mode === 'leaving' && C.verdict && state.t - C.verdict.t < 1.6) {
+        bubble(pos.x - 10 * sc, pos.y - 34 * sc, C.verdict.ok ? '★ Safe beach!' : '✗ Unsafe!', C.verdict.ok ? '#2a7d4f' : '#e63946', sc);
+      } else if (C.mode === 'driving') {
+        bubble(pos.x - 10 * sc, pos.y - 34 * sc, 'On my way!', '#1d3557', sc);
+      } else if (C.warnFor != null) {
+        const left = Math.ceil(C.warnFor - state.t);
+        bubble(pos.x - 10 * sc, pos.y - 34 * sc, `Inspection in ${left}`, '#1d3557', sc);
+      }
+    }
+
+    // ---------- effects ----------
+    function effects(v, t) {
+      const vision = v.state && v.state.captain.mode === 'looking';
+      for (const e of v.effects) {
+        const k = (t - e.t0) / e.dur;
+        if (k < 0 || k > 1) continue;
+        if (e.type === 'splash') {
+          for (let j = 0; j < 9; j++) {
+            const a = j / 9 * 6.283, d = 18 * scale() * ease(k);
+            ctx.fillStyle = `rgba(255,255,255,${1 - k})`;
+            ctx.beginPath(); ctx.arc(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d * 0.6 - Math.sin(k * Math.PI) * 8, 2 * scale(), 0, 6.283); ctx.fill();
+          }
+        } else if (e.type === 'text') {
+          ctx.globalAlpha = Math.sin(k * Math.PI);
+          ctx.font = `bold ${Math.round((e.size || 14) * scale())}px -apple-system, Segoe UI, sans-serif`;
+          ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+          ctx.strokeText(e.text, e.x, e.y - 20 * k); ctx.fillStyle = e.col || '#fff'; ctx.fillText(e.text, e.x, e.y - 20 * k);
+          ctx.textAlign = 'start'; ctx.globalAlpha = 1;
+        } else if (e.type === 'whistle') {
+          const tw = towerPx(), r = SW.RULES.whistleSpeed * (t - e.t0) * Math.max(W, waterH);
+          ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; ctx.lineWidth = 3 * scale();
+          ctx.beginPath(); ctx.ellipse(tw.x, tw.y, r, r * (waterH / W), 0, Math.PI, 2 * Math.PI); ctx.stroke();
+        } else if (e.type === 'tag') {
+          const s = v.state && v.state.swimmers[e.who];
+          if (!s || s.state === 'saved' || s.state === 'gone' || vision) continue;
+          let p = px(s);
+          if (s.state === 'towed') continue;
+          ctx.globalAlpha = Math.min(1, (1 - k) * 3);
+          bubble(p.x, p.y - 30 * scale(), e.text, e.col, scale(), true);
+          ctx.globalAlpha = 1;
+        } else if (e.type === 'banner') {
+          const a = Math.min(1, k * 8, (1 - k) * 4), sc = scale();
+          ctx.globalAlpha = a;
+          const y = waterH * (e.low ? 0.8 : 0.2);
+          ctx.fillStyle = 'rgba(4,30,44,0.82)';
+          const bw = Math.min(W - 24, 360 * sc), bh = (e.sub ? 58 : 38) * sc;
+          ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W / 2 - bw / 2, y - bh / 2, bw, bh, 12 * sc) : ctx.rect(W / 2 - bw / 2, y - bh / 2, bw, bh); ctx.fill();
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = e.col || '#fff'; ctx.font = `900 ${Math.round(20 * sc)}px -apple-system, Segoe UI, sans-serif`;
+          ctx.fillText(e.text, W / 2, y - (e.sub ? 10 * sc : 0));
+          if (e.sub) { ctx.fillStyle = '#eef8fb'; ctx.font = `${Math.round(12.5 * sc)}px -apple-system, Segoe UI, sans-serif`; fitText(e.sub, W / 2, y + 14 * sc, bw - 16); }
+          ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic'; ctx.globalAlpha = 1;
+        } else if (e.type === 'stamp') {
+          const sc = scale(), z = k < 0.12 ? 2.2 - 1.2 * (k / 0.12) : 1;
+          ctx.save(); ctx.globalAlpha = Math.min(1, (1 - k) * 3); ctx.translate(W / 2, waterH * 0.5); ctx.rotate(-0.18); ctx.scale(z, z);
+          ctx.strokeStyle = '#2fbf71'; ctx.fillStyle = '#2fbf71'; ctx.lineWidth = 4 * sc;
+          const bw = 170 * sc, bh = 54 * sc;
+          ctx.strokeRect(-bw / 2, -bh / 2, bw, bh);
+          ctx.font = `900 ${Math.round(26 * sc)}px -apple-system, Segoe UI, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('SAFE ✓', 0, -4 * sc);
+          ctx.font = `700 ${Math.round(9 * sc)}px -apple-system, Segoe UI, sans-serif`; ctx.fillText('CERTIFIED BY THE CAPTAIN', 0, 16 * sc);
+          ctx.restore();
+        } else if (e.type === 'confetti') {
+          const x = e.x + e.vx * k, y = e.y + e.vy * k + 80 * k * k;
+          ctx.fillStyle = e.col; ctx.globalAlpha = 1 - k; ctx.fillRect(x, y, 3 * scale(), 3 * scale()); ctx.globalAlpha = 1;
+        }
+      }
+    }
+
+    function draw(v, t) {
+      const st = v.state, vision = st && st.captain.mode === 'looking';
+      sea(t, vision);
+      if (st) emitNoise(st, t);
+      drawNoise(t, vision);
+      if (st && !vision) {
+        // drowning swimmers first so the loud ones draw on top
+        const order = st.swimmers.slice().sort((a, b) => (a.state === 'drown') - (b.state === 'drown'));
+        for (const s of order.reverse()) swimmer(s, t, st);
+      }
+      if (st && vision) {
+        // Captain vision: he sees only noise. Swimmers who are making none are not there for him.
+        ctx.fillStyle = 'rgba(255,214,120,0.85)'; ctx.font = `bold ${Math.round(12 * scale())}px -apple-system, sans-serif`;
+        ctx.textAlign = 'center'; ctx.fillText('WHAT THE CAPTAIN SEES', W / 2, 18 * scale());
+        ctx.fillStyle = 'rgba(255,214,120,0.6)'; ctx.font = `${Math.round(11 * scale())}px -apple-system, sans-serif`;
+        ctx.fillText('he only notices noise', W / 2, 33 * scale()); ctx.textAlign = 'start';
+        for (const s of st.swimmers) if (s.state === 'struggle') { const p = px(s); ctx.fillStyle = 'rgba(255,90,90,0.9)'; ctx.beginPath(); ctx.arc(p.x, p.y, 5 * scale(), 0, 6.283); ctx.fill(); }
+      }
+      sand(t);
+      tower(t, st, vision);
+      if (st) { rings(st); captain(st, v.level, t); }
+      effects(v, t);
+      if (v.aim && !vision) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5;
+        reachPath(v.aim.x, v.aim.y, SW.RULES.reachStruggle); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(v.aim.x - 5, v.aim.y); ctx.lineTo(v.aim.x + 5, v.aim.y); ctx.moveTo(v.aim.x, v.aim.y - 5); ctx.lineTo(v.aim.x, v.aim.y + 5); ctx.stroke();
+      }
+    }
+
+    function toWater(x, y) { return { x: x / W, y: y / waterH, inWater: y < waterH }; }
+    function toPx(p) { return px(p); }
+    function reset() { noise.length = 0; }
+    return { reset, resize, draw, toWater, toPx, towerPx, get W() { return W; }, get H() { return H; }, get waterH() { return waterH; } };
+  }
+
+  root.SWRender = { createRenderer };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* game.js */
+// STILL WATER: the game controller. Input, the fixed-step loop, events -> effects and sound, level flow.
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const { LEVELS, THREADS, endless } = SWLevels;
+  const DT = 0.05;
+  const canvas = $('c'), stage = $('stage');
+  const rend = SWRender.createRenderer(canvas);
+
+  let view = 'title';            // title | card | play | paused | result | menu
+  let level = null, li = -1, st = null;
+  let effects = [], acc = 0, vis = 0, lastNow = 0, slowUntil = 0, aim = null, resultTimer = 0, demo = null, held = false;
+  const seen = {};               // one-time lessons shown this session
+  const progress = Shell.store.get('sw-progress', {});
+  let bestEndless = Shell.store.get('sw-endless', 0);
+
+  // ---------- sizing ----------
+  function fit() {
+    const w = Math.max(300, Math.min(700, stage.clientWidth || 380));
+    rend.resize(w);
+    Shell.reportHeight();
+  }
+  window.addEventListener('resize', fit);
+
+  // ---------- touch gating: swipes scroll the page until the reader taps the board ----------
+  const isActive = Shell.gate(stage, on => {
+    if (on === false && view === 'play') pause();
+    $('tapHint').classList.toggle('on', on === false && view === 'play');
+    if (on !== false) $('tapHint').classList.remove('on');
+  });
+
+  // ---------- overlays ----------
+  function show(id) {
+    for (const o of ['intro', 'card', 'menu', 'pause', 'result']) $(o).classList.toggle('on', o === id);
+    Shell.reportHeight();
+  }
+
+  // ---------- effects ----------
+  const fx = (type, o) => effects.push(Object.assign({ type, t0: vis, dur: 1.2 }, o));
+  const at = p => rend.toPx(p);
+  function text(p, s, col, size, dur) { const q = at(p); fx('text', { x: q.x, y: q.y - 18, text: s, col, size, dur: dur || 1.3 }); }
+  function tag(who, s, col, dur) { fx('tag', { who, text: s, col, dur: dur || 2 }); }
+  // a banner sits at the top of the water, or at the bottom when the swimmer it's about is up top
+  function banner(s, sub, col, dur, who) {
+    const w = who != null && st.swimmers[who];
+    fx('banner', { text: s, sub, col, dur: dur || 3.2, low: !!(w && w.y < 0.45) });
+  }
+  function lesson(key, fn) { if (seen[key]) return; seen[key] = true; fn(); }
+  function slow(secs) { slowUntil = vis + secs; }
+
+  function handleEvents() {
+    for (const e of st.events) {
+      const s = e.who != null ? st.swimmers[e.who] : null;
+      switch (e.type) {
+        case 'throw': SWAudio.play('throw'); break;
+        case 'catch': {
+          const q = at(e); fx('splash', { x: q.x, y: q.y, dur: 0.6 });
+          SWAudio.play('splash'); SWAudio.play(e.quiet ? 'quietSave' : 'catch');
+          text(e, e.quiet ? `Quiet save! +${e.points}` : `+${e.points}`, e.quiet ? '#ffd166' : '#ffffff', e.quiet ? 16 : 14);
+          break;
+        }
+        case 'miss': { const q = at(e); fx('splash', { x: q.x, y: q.y, dur: 0.6 }); SWAudio.play('splash'); text(e, 'missed', 'rgba(255,255,255,0.8)', 12, 0.9); break; }
+        case 'saved': {
+          SWAudio.play('saved');
+          const tw = rend.towerPx();
+          for (let k = 0; k < 14; k++) fx('confetti', { x: tw.x, y: tw.y - 20, vx: (Math.random() - 0.5) * 160, vy: -60 - Math.random() * 90, col: ['#ffd166', '#ff6b4a', '#3ddc97', '#ffffff'][k % 4], dur: 1.1 });
+          break;
+        }
+        case 'struggle':
+          SWAudio.play('help');
+          if (level.id === 'first') lesson('tapHere', () => tag(e.who, 'tap near me!', '#ffd166', 3.5));
+          break;
+        case 'quiet':
+          if (e.fromStruggle) {
+            tag(e.who, 'went quiet…', '#ffb36b', 2.4);
+            lesson('foldback', () => { slow(1.8); banner('Quiet is worse', 'No strength left to shout. They’re drowning.', '#ffb36b', 3.6, e.who); });
+          }
+          break;
+        case 'reply':
+          if (e.kind === 'none') {
+            SWAudio.play('flag');
+            tag(e.who, 'no answer!', '#ff5a5f', 2.2);
+            lesson('flag', () => banner('No answer', 'Too busy trying to breathe. Throw it right on them.', '#ff5a5f', 3.4, e.who));
+          }
+          break;
+        case 'whistle': SWAudio.play('whistle'); fx('whistle', { dur: 1.4 }); break;
+        case 'lost': SWAudio.play('lost'); break;
+        case 'call': SWAudio.play('radio'); text({ x: 0.5, y: 0.93 }, 'Captain, come take a look!', '#ffffff', 12, 1.6); break;
+        case 'inspect': SWAudio.play('horn'); break;
+        case 'skip': text({ x: 0.75, y: 0.93 }, 'He trusts you: visit skipped', '#3ddc97', 13, 2); break;
+        case 'strike':
+          SWAudio.play('strike');
+          banner('Strike!', 'He saw someone yelling.', '#ff5a5f', 2.4);
+          break;
+        case 'star':
+          SWAudio.play('star'); SWAudio.play('stamp');
+          fx('stamp', { dur: 1.8 });
+          if (e.quiet && e.quiet.length) {
+            for (const w of e.quiet) tag(w, 'certified safe…', '#ff5a5f', 3);
+            lesson('certified', () => { slow(1.5); banner('Certified safe', 'He only saw calm water. Someone is drowning in it.', '#ff5a5f', 4, e.quiet[0]); });
+          }
+          break;
+        case 'over': onOver(); break;
+      }
+    }
+    st.events.length = 0;
+  }
+
+  // ---------- the loop ----------
+  function frame(now) {
+    const real = Math.min(0.1, Math.max(0, (now - lastNow) / 1000)) || 0;
+    lastNow = now;
+    const k = vis < slowUntil ? 0.3 : 1;
+    const dv = real * k;
+    if (view === 'play' && st && !st.over && !held) {
+      acc += dv;
+      while (acc >= DT && !st.over) { SW.step(level, st, DT); acc -= DT; handleEvents(); }
+    } else if (demo && !level && st) { SW.step(demo, st, dv); st.events.length = 0; }
+    if (view !== 'paused') vis += dv;
+    effects = effects.filter(e => vis - e.t0 < e.dur);
+    rend.draw({ state: st, level, effects, aim: view === 'play' ? aim : null }, vis);
+    hud();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- HUD ----------
+  let hudKey = '';
+  function hud() {
+    const playing = !!st && (view === 'play' || view === 'paused' || view === 'result' || view === 'card');
+    const L = level;
+    const hasCap = L && SW.hasCaptain(L);
+    $('whistleBtn').style.display = L && L.whistle === false ? 'none' : '';
+    $('whistleBtn').disabled = !(playing && view === 'play' && SW.canWhistle(st));
+    const cd = playing ? Math.max(0, Math.min(1, (st.whistle.ready - st.t) / SW.RULES.whistleCooldown)) : 0;
+    $('whistleBtn').querySelector('.cd').style.width = (cd * 100) + '%';
+    const cb = $('callBtn');
+    cb.style.display = hasCap && L.canCall !== false ? '' : 'none';
+    let label = 'Call Captain', trusted = false;
+    if (playing && hasCap) {
+      const C = st.captain;
+      if (C.mode === 'driving') label = 'On his way…';
+      else if (C.mode === 'looking') label = 'Inspecting…';
+      else if (C.mode === 'away' && st.t < C.trustUntil) { label = `Trusted <small>${Math.ceil(C.trustUntil - st.t)}s</small>`; trusted = true; }
+      else if (C.mode === 'away' && st.swimmers.some(SW.loud)) label = 'Call Captain <small>(not while someone yells)</small>';
+    }
+    cb.disabled = !(playing && view === 'play' && SW.canCall(L, st));
+    cb.classList.toggle('trusted', trusted);
+    const key = [label, playing ? st.score : '', playing ? st.strikes : '', playing ? st.lost : '', L ? L.id : ''].join('|');
+    if (key !== hudKey) {
+      hudKey = key;
+      cb.innerHTML = label;
+      $('score').textContent = playing ? st.score : '';
+      $('lvName').textContent = L ? L.name : '';
+      if (playing && hasCap && !L.endless) {
+        const max = L.strikes == null ? 1 : L.strikes;
+        $('strikes').innerHTML = Array.from({ length: max }, (_, i) => i < st.strikes ? '✗' : '<span class="off">✗</span>').join('');
+        $('strikes').title = `${max - st.strikes} strike(s) left`;
+      } else if (playing && L.endless) {
+        $('strikes').innerHTML = Array.from({ length: L.strikes }, (_, i) => i < st.strikes ? '✗' : '<span class="off">✗</span>').join('');
+      } else $('strikes').innerHTML = '';
+      $('lives').textContent = playing && L.endless ? '♥'.repeat(Math.max(0, L.lives - st.lost)) : '';
+    }
+    const frac = playing && !L.endless ? Math.min(1, st.t / L.length) : playing ? (st.t % 60) / 60 : 0;
+    $('clock').firstElementChild.style.width = (frac * 100) + '%';
+  }
+
+  // ---------- input ----------
+  function local(e) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  canvas.addEventListener('pointerdown', e => {
+    if (!isActive()) return;
+    if (view !== 'play' || !st || st.over) return;
+    const p = local(e), w = rend.toWater(p.x, p.y);
+    if (!w.inWater) return;
+    e.preventDefault();
+    if (SW.inspecting(st)) { text(w, 'Not now: he’s inspecting', '#ffd166', 12, 1); return; }
+    if (!SW.canThrow(st)) { text(w, 'no ring ready', 'rgba(255,255,255,0.85)', 12, 0.8); return; }
+    SW.throwRing(st, w.x, w.y);
+    handleEvents();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
+    const p = local(e), w = rend.toWater(p.x, p.y);
+    aim = w.inWater ? p : null;
+  });
+  canvas.addEventListener('pointerleave', () => { aim = null; });
+
+  function whistle() { if (view === 'play' && level && level.whistle !== false && SW.blowWhistle(st)) handleEvents(); }
+  function call() { if (view === 'play' && SW.callCaptain(level, st)) handleEvents(); }
+  $('whistleBtn').onclick = whistle;
+  $('callBtn').onclick = call;
+  document.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'w' || e.key === 'W') { if (view === 'play') { e.preventDefault(); whistle(); } }
+    else if (e.key === 'c' || e.key === 'C') call();
+    else if (e.key === 'r' || e.key === 'R') { if (level) restart(); }
+    else if (e.key === 'Escape' && view === 'play') pause();
+  });
+
+  // ---------- flow ----------
+  function setLevel(L, idx) {
+    level = L; li = idx; st = SW.init(L); effects = []; acc = 0; slowUntil = 0; rend.reset();
+    clearTimeout(resultTimer);
+  }
+  function openCard(idx) {
+    const L = idx === -1 ? endless((Date.now() % 100000) + 1) : LEVELS[idx];
+    setLevel(L, idx);
+    if (L.endless) {
+      $('cKicker').textContent = 'Endless';
+      $('cTitle').textContent = 'Endless summer';
+      $('cText').innerHTML = 'The beach fills up as the day goes on. Lose three swimmers, or get three strikes, and your shift is over.';
+    } else {
+      const th = THREADS.find(t => t.id === L.thread);
+      $('cKicker').textContent = `${th.name} · Shift ${idx + 1} of ${LEVELS.length}`;
+      $('cTitle').textContent = L.name;
+      $('cText').innerHTML = L.intro;
+    }
+    view = 'card'; show('card');
+  }
+  function begin() { view = 'play'; show(null); SWAudio.setOn(SWAudio.on); }
+  function restart() {
+    if (li === -1 && level && level.endless) { setLevel(endless((Date.now() % 100000) + 1), -1); begin(); }
+    else if (li >= 0) { setLevel(LEVELS[li], li); begin(); }
+  }
+  function pause() { if (view !== 'play') return; view = 'paused'; show('pause'); }
+  function resume() { if (view !== 'paused') return; view = 'play'; show(null); }
+  $('startBtn').onclick = begin;
+  $('resumeBtn').onclick = resume;
+  $('restartBtn').onclick = () => { if (level) restart(); };
+  $('menuBtn').onclick = () => openMenu();
+  $('playBtn').onclick = () => { const next = LEVELS.findIndex(L => !progress[L.id]); openCard(next < 0 ? 0 : next); };
+  $('levelsBtn').onclick = () => openMenu();
+  $('endlessBtn').onclick = () => openCard(-1);
+
+  function onOver() {
+    clearTimeout(resultTimer);
+    const L = level, s = st;
+    resultTimer = setTimeout(() => { if (st === s && view === 'play') showResult(L, s); }, s.over === 'won' ? 900 : 1600);
+  }
+
+  function lossReason(s) {
+    const gone = s.swimmers.filter(w => w.state === 'lost');
+    const w = gone[gone.length - 1];
+    if (!w) return '';
+    const V = s.captain.verdict;
+    const certified = V && V.ok && w.since - V.t < 8 && w.since >= V.t - 2.5;
+    if (certified) return 'The Captain looked, saw calm water, and certified your beach. Someone was drowning in it. <b>Calm isn’t safe.</b>';
+    if (w.wasLoud) return 'They yelled for help, then went quiet. Quiet was worse: they had no strength left to shout. <b>Go to the ones who stop.</b>';
+    return 'They never made a sound. Real drowning is quiet: <b>whistle</b>, and throw to whoever doesn’t wave back.';
+  }
+
+  function showResult(L, s) {
+    view = 'result';
+    const quietSaves = s.swimmers.filter(w => w.state === 'saved' && (w.flagged !== false || w.sink > 0)).length;
+    let title, kicker, body, stars = 0;
+    const btns = [];
+    if (L.endless) {
+      const saved = s.saved;
+      const best = saved > bestEndless;
+      if (best) { bestEndless = saved; Shell.store.set('sw-endless', saved); }
+      kicker = 'Endless summer'; title = s.over === 'fired' ? 'Fired!' : 'Shift over';
+      body = `You saved <b>${saved}</b> swimmer${saved === 1 ? '' : 's'}${quietSaves ? `, ${quietSaves} of them quiet` : ''} · ${s.score} points.<br>${best ? 'A new best!' : `Your best: ${bestEndless}.`}`;
+      if (s.over === 'lost') body += '<br>' + lossReason(s);
+      btns.push(['Play again', () => openCard(-1), true], ['Levels', openMenu]);
+      SWAudio.play(best ? 'win' : 'fail');
+    } else if (s.over === 'won') {
+      stars = SW.stars(L, s);
+      const prev = progress[L.id] || { stars: 0, score: 0 };
+      progress[L.id] = { stars: Math.max(prev.stars, stars), score: Math.max(prev.score, s.score) };
+      Shell.store.set('sw-progress', progress);
+      kicker = `Shift ${li + 1} complete`; title = ['', 'Everyone’s safe', 'Nice work', 'Lifeguard of the year'][stars];
+      body = `${s.saved} saved${quietSaves ? ` (${quietSaves} quiet)` : ''}${s.stars ? ` · ${s.stars} clean inspection${s.stars > 1 ? 's' : ''}` : ''} · <b>${s.score}</b> points`;
+      if (stars < 3 && L.stars) body += `<br><small>${L.stars[stars === 1 ? 0 : 1]} for ${stars + 1} stars: faster rescues score more.</small>`;
+      if (li + 1 < LEVELS.length) btns.push(['Next shift', () => openCard(li + 1), true]);
+      else { body += '<br>That’s every shift. Try <b>Endless summer</b>.'; btns.push(['Endless summer', () => openCard(-1), true]); }
+      btns.push(['Replay', restart], ['Levels', openMenu]);
+      SWAudio.play('win');
+    } else if (s.over === 'fired') {
+      kicker = L.name; title = 'Fired!';
+      body = 'The Captain saw someone yelling. Clear the water before he looks, or <b>radio him in</b> while it’s calm: after a clean inspection he stays away a while.';
+      btns.push(['Try again', restart, true], ['Levels', openMenu]);
+      SWAudio.play('fail');
+    } else {
+      kicker = L.name; title = 'Someone drowned';
+      body = lossReason(s);
+      btns.push(['Try again', restart, true], ['Levels', openMenu]);
+      SWAudio.play('fail');
+    }
+    $('rKicker').textContent = kicker;
+    $('rTitle').textContent = title;
+    $('rStars').innerHTML = stars ? [1, 2, 3].map(i => i <= stars ? '★' : '<span class="off">★</span>').join('') : '';
+    $('rStars').style.display = stars ? '' : 'none';
+    $('rText').innerHTML = body;
+    const row = $('rButtons'); row.innerHTML = '';
+    for (const [label, fn, primary] of btns) {
+      const b = document.createElement('button'); b.textContent = label; if (primary) b.className = 'primary'; b.onclick = fn; row.appendChild(b);
+    }
+    show('result');
+  }
+
+  function openMenu() {
+    const m = $('menu'); m.innerHTML = '';
+    const h = document.createElement('h2'); h.textContent = 'Shifts'; m.appendChild(h);
+    THREADS.forEach(th => {
+      const box = document.createElement('div'); box.className = 'thread';
+      box.innerHTML = `<h3>${th.name}</h3><p>${th.blurb}</p>`;
+      LEVELS.forEach((L, i) => {
+        if (L.thread !== th.id) return;
+        const unlocked = i === 0 || progress[LEVELS[i - 1].id] || progress[L.id];
+        const b = document.createElement('button'); b.className = 'lv' + (unlocked ? '' : ' locked');
+        const s = progress[L.id] ? progress[L.id].stars : 0;
+        b.innerHTML = `${i + 1}. ${L.name}${s ? `<span class="s">${'★'.repeat(s)}</span>` : ''}`;
+        b.onclick = () => openCard(i);
+        if (!unlocked) b.title = 'Finish the shift before it (or play it anyway)';
+        box.appendChild(b);
+      });
+      m.appendChild(box);
+    });
+    const end = document.createElement('div'); end.className = 'thread';
+    end.innerHTML = `<h3>Endless summer</h3><p>${bestEndless ? `Your best: ${bestEndless} saved.` : 'How long can you keep everyone afloat?'}</p>`;
+    const eb = document.createElement('button'); eb.className = 'lv'; eb.textContent = 'Play endless'; eb.onclick = () => openCard(-1);
+    end.appendChild(eb); m.appendChild(end);
+    const row = document.createElement('div'); row.className = 'row';
+    const inGame = !!(level && st && !st.over && (view === 'play' || view === 'paused'));
+    const back = document.createElement('button'); back.textContent = inGame ? 'Back to the beach' : 'Close';
+    back.onclick = () => { if (inGame) { view = 'paused'; show('pause'); } else { view = 'title'; attract(); show('intro'); } };
+    row.appendChild(back); m.appendChild(row);
+    view = inGame ? 'paused' : 'menu';
+    show('menu');
+  }
+
+  // ---------- sound ----------
+  function soundLabel() { $('soundBtn').textContent = SWAudio.on ? '♪' : '♪̸'; $('soundBtn').style.opacity = SWAudio.on ? 1 : 0.55; }
+  SWAudio.setOn(false);
+  $('soundBtn').onclick = () => { SWAudio.setOn(!SWAudio.on); Shell.store.set('sw-sound', SWAudio.on); soundLabel(); };
+  // sound starts on the first press of Play/Start if the reader had it on before (browsers need a gesture)
+  const wantSound = Shell.store.get('sw-sound', true);
+  for (const id of ['playBtn', 'startBtn', 'endlessBtn']) $(id).addEventListener('click', () => { if (wantSound && !SWAudio.on) { SWAudio.setOn(true); soundLabel(); } });
+  soundLabel();
+
+  // pause when the widget scrolls out of view or the tab hides
+  try {
+    new IntersectionObserver(es => { for (const e of es) if (!e.isIntersecting) pause(); }, { threshold: 0.15 }).observe(stage);
+  } catch (e) {}
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  window.addEventListener('blur', () => pause());
+
+  // ---------- title screen: a calm beach behind the menu ----------
+  function attract() {
+    demo = { length: 1e9, rings: 1, swimmers: [
+      { kind: 'swimmer', x: 0.25, y: 0.55 }, { kind: 'treader', x: 0.7, y: 0.35 }, { kind: 'floater', x: 0.45, y: 0.7 },
+      { kind: 'swimmer', x: 0.8, y: 0.65 }, { kind: 'swimmer', x: 0.15, y: 0.25 }, { kind: 'treader', x: 0.55, y: 0.18 } ] };
+    level = null; st = SW.init(demo);
+  }
+
+  // debug hooks for tests
+  window.__swDebug = {
+    get rend() { return rend; }, get state() { return st; }, get level() { return level; }, get view() { return view; }, get li() { return li; },
+    openCard, begin, restart, whistle, call,
+    throwAt(x, y) { if (view === 'play' && SW.throwRing(st, x, y)) { handleEvents(); return true; } return false; },
+    // stepping also advances the visual clock and draws, so screenshots look like real play
+    step(n) { for (let i = 0; i < n && st && !st.over; i++) { SW.step(level, st, DT); handleEvents(); vis += DT; rend.draw({ state: st, level, effects, aim: null }, vis); } effects = effects.filter(e => vis - e.t0 < e.dur); },
+    setPaused(p) { if (p) { view = 'paused'; } else { view = 'play'; show(null); } },
+    hold(h) { held = !!h; acc = 0; },
+    canvasPoint(x, y) { const p = rend.toPx({ x, y }); const r = canvas.getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y }; },
+  };
+
+  fit();
+  attract();
+  Shell.watchHeight();
+  requestAnimationFrame(t => { lastNow = t; frame(t); });
+})();
+
+</script>
+</body>
+</html>

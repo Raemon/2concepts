@@ -1,213 +1,158 @@
-// Exhaustive solver for HUSH levels (used by tools/check-levels.js and by the endless mode in the browser).
-// solveFull(level, rules) searches every action sequence breath by breath (full information) and
-// returns a winning plan or null. `rules` restricts the action set to model a player who lacks a concept:
-//   greedyBloom: each water must go to a flower whose bloom is currently the most open (monotonic reading)
-//   noSummon:    the Owl is never summoned (inspections are something that happens to you)
-//   noCertifyPastFold: never summon the Owl to a fold flower past its peak (forbids certified collapse)
+// STILL WATER solver. Plays a level with perfect aim, deciding every 0.25 s, using only what a player could know.
+// A policy says which ideas the player has:
+//   foldback  "a swimmer who went quiet may be worse, not better" (without it, only someone shouting gets a ring)
+//   whistle   blows the whistle every time it's ready (a routine, never timed with hidden knowledge) and marks
+//             whoever fails to answer
+//   call      may radio the Captain in, at any moment it chooses
+// The search is exhaustive over its decision grid (memoized depth-first), so "no plan" means no plan at this grain.
 (function (root) {
-'use strict';
-const H = (typeof module !== 'undefined' && module.exports) ? require('./logic.js') : root.Hush;
+  'use strict';
+  const SW = typeof module !== 'undefined' && module.exports ? require('./logic.js') : root.SW;
 
-function key(s) {
-  let k = s.breath + '|' + s.water + '|' + s.owl.mode[0] + s.owl.target + s.owl.rest + '|';
-  for (const f of s.flowers) k += (f.alive ? f.t : 'x') + ':' + f.cloche + ',';
-  return k;
-}
+  const DT = 0.05, GRAIN = 0.25;
+  let REACT = 0.3;          // seconds between something becoming visible and the player acting on it
+  let EVERY = 0;            // a lazier routine: whistle at most this often (0 = whenever it's ready)
+  const VISIBLE = 0.8;   // a quiet drowner looks like someone treading water until this far under
 
-function waterOptions(s, rules) {
-  // Multisets of flowers to water this breath (order-free, since each dose just subtracts).
-  const out = [[]];
-  const n = s.flowers.length;
-  const maxW = Math.min(s.water, 3);
-  function rec(start, list, st) {
-    if (list.length >= maxW) return;
-    for (let i = start; i < n; i++) {
-      if (!H.canWater(st, i)) continue;
-      if (rules.greedyBloom) {
-        let best = -1;
-        st.flowers.forEach((f, j) => { if (H.canWater(st, j)) best = Math.max(best, H.bloomFrac(f.kind, f.t)); });
-        if (H.bloomFrac(st.flowers[i].kind, st.flowers[i].t) < best - 1e-9) continue;
-      }
-      const nx = H.clone(st); H.water(nx, i);
-      const nl = list.concat([i]);
-      out.push(nl);
-      rec(rules.greedyBloom ? 0 : i, nl, nx);
-    }
+  const POLICIES = {
+    full: { foldback: true, whistle: true, call: true },
+    ordinary: { foldback: false, whistle: false, call: true },   // the Captain's rule: trouble is noise
+    noWhistle: { foldback: true, whistle: false, call: true },
+    noCall: { foldback: true, whistle: true, call: false },
+  };
+
+  const clone = st => ({
+    ...st,
+    rings: st.rings.map(r => ({ ...r })),
+    swimmers: st.swimmers.map(s => ({ ...s, reply: s.reply && { ...s.reply } })),
+    whistle: { ...st.whistle },
+    captain: { ...st.captain, schedule: st.captain.schedule.slice(), verdict: st.captain.verdict && { ...st.captain.verdict } },
+    events: [],
+  });
+
+  function advance(level, st, secs) {
+    const n = Math.round(secs / DT);
+    for (let i = 0; i < n && !st.over; i++) { SW.step(level, st, DT); st.events.length = 0; }
+    return st;
   }
-  rec(0, [], s);
-  // dedupe multisets
-  const seen = new Set();
-  return out.filter(l => { const k = l.slice().sort().join(','); if (seen.has(k)) return false; seen.add(k); return true; });
-}
 
-function actions(level, s, rules) {
-  const res = [];
-  for (const ws of waterOptions(s, rules)) {
-    const st = H.clone(s);
-    let ok = true;
-    for (const i of ws) { if (!H.canWater(st, i)) { ok = false; break; } H.water(st, i); }
-    if (!ok) continue;
-    res.push({ ws, sm: -1, st });
-    if (!rules.noSummon) {
-      for (let i = 0; i < st.flowers.length; i++) {
-        if (!H.canSummon(level, st, i)) continue;
-        const f = st.flowers[i];
-        if (rules.noCertifyPastFold && f.kind === 'fold' && f.t > 6) continue;
-        const s2 = H.clone(st); H.summon(s2, i);
-        res.push({ ws, sm: i, st: s2 });
-      }
-    }
-  }
-  return res;
-}
-
-function solveFull(level, rules = {}, limit = 2e6) {
-  let layer = new Map();
-  const s0 = H.init(level);
-  layer.set(key(s0), { s: s0, plan: [] });
-  let expanded = 0;
-  for (let b = 0; b < level.length; b++) {
-    const next = new Map();
-    for (const { s, plan } of layer.values()) {
-      for (const a of actions(level, s, rules)) {
-        const st = H.tick(level, a.st);
-        if (st.lost || st.caught > 0) continue;
-        expanded++;
-        if (expanded > limit) return { status: 'limit', expanded };
-        const k = key(st);
-        const prev = next.get(k);
-        if (!prev || prev.s.passes < st.passes) next.set(k, { s: st, plan: plan.concat([{ b, ws: a.ws, sm: a.sm }]) });
-      }
-    }
-    layer = next;
-    if (layer.size === 0) return { status: 'unsolvable', breath: b, expanded };
-  }
-  let best = null;
-  for (const v of layer.values()) if (H.won(level, v.s) && (!best || v.s.passes > best.s.passes)) best = v;
-  return best ? { status: 'solved', plan: best.plan, rating: best.s.passes, expanded } : { status: 'unsolvable', breath: level.length, expanded };
-}
-
-function replay(level, plan) {
-  let s = H.init(level);
-  for (let b = 0; b < level.length; b++) {
-    const step = plan.find(p => p.b === b);
-    if (step) { for (const i of step.ws) H.water(s, i); if (step.sm >= 0) H.summon(s, step.sm); }
-    s = H.tick(level, s);
-  }
-  return s;
-}
-
-// Fast feasibility check for generated nights: depth-first, most promising action first, with a visited set.
-function solveFeasible(level, budget = 60000) {
-  const seen = new Set();
-  let n = 0;
-  const risk = st => st.flowers.reduce((a, f) => a + (f.alive ? f.t * f.t : 999), 0) + st.caught * 500;
-  function rec(s) {
-    if (s.breath >= level.length) return H.won(level, s);
-    if (++n > budget) throw new Error('budget');
-    const k = key(s) + '|' + s.caught;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    const opts = actions(level, s, {}).map(a => ({ a, st: H.tick(level, a.st) }))
-      .filter(o => !o.st.lost && o.st.caught === 0)
-      .sort((x, y) => risk(x.st) - risk(y.st));
-    for (const o of opts) if (rec(o.st)) return true;
+  // Does the player, under this policy, know swimmer s needs a ring right now?
+  function known(pol, s, st) {
+    if (s.state === 'struggle') return s.since + REACT <= st.t + 1e-9;
+    if (s.state !== 'drown' || !pol.foldback) return false;
+    if (s.wasLoud) return s.since + REACT <= st.t + 1e-9;
+    if (s.sink >= VISIBLE && s.since + VISIBLE * s.drown + REACT <= st.t + 1e-9) return true;
+    if (pol.whistle && s.flagged !== false && s.flagged + REACT <= st.t + 1e-9) return true;
     return false;
   }
-  try { return rec(H.init(level)) ? 'solved' : 'unsolvable'; } catch (e) { return 'limit'; }
-}
-
-const API = { solveFull, replay, key, solveFeasible };
-
-// Partial-observation solver. `worlds` are complete states that look identical to the player at the start
-// (hidden thirst behind the same bloom). Returns true if one policy, choosing actions from what the player
-// can see, wins in every world. AND over what the player might observe next, OR over actions.
-function observe(level, s) {
-  let o = s.water + '|' + s.owl.mode[0] + s.owl.target + '|' + s.caught + '|';
-  for (const f of s.flowers) o += (f.alive ? H.bloomOf(f.kind, f.t) : 'x') + ':' + f.cloche + ',';
-  for (const e of s.events) o += e.type[0] + e.f;
-  return o;
-}
-
-function solveBelief(level, worlds, rules = {}, budget = { n: 0, max: 3e6 }) {
-  const memo = new Map();
-  function rec(ws) {
-    if (ws.length === 1) {
-      // Fully identified: hand over to the full-information search from here.
-      const rest = Object.assign({}, level, { length: level.length });
-      return solveFrom(level, ws[0], rules).status === 'solved';
-    }
-    const b = ws[0].breath;
-    if (b >= level.length) return ws.every(w => H.won(level, w));
-    const k = ws.map(key).sort().join('#');
-    if (memo.has(k)) return memo.get(k);
-    if (++budget.n > budget.max) throw new Error('belief budget exceeded');
-    memo.set(k, false);
-    // Actions are chosen from the first world's options; availability is observable, so it matches across worlds.
-    const opts = actions(level, ws[0], rules);
-    let win = false;
-    for (const a of opts) {
-      const nexts = [];
-      let dead = false;
-      for (const w of ws) {
-        const st = H.clone(w);
-        for (const i of a.ws) H.water(st, i);
-        if (a.sm >= 0) H.summon(st, a.sm);
-        const t = H.tick(level, st);
-        if (t.lost || t.caught > 0) { dead = true; break; }
-        nexts.push(t);
-      }
-      if (dead) continue;
-      const parts = new Map();
-      for (const t of nexts) { const o = observe(level, t); if (!parts.has(o)) parts.set(o, []); parts.get(o).push(t); }
-      let all = true;
-      for (const p of parts.values()) if (!rec(p)) { all = false; break; }
-      if (all) { win = true; break; }
-    }
-    memo.set(k, win);
-    return win;
+  // Quiet in the water and not yet explained: a whistle would tell you something.
+  function ambiguous(s) {
+    if (s.wasLoud || s.flagged !== false) return false;
+    if (s.state === 'swim') return s.kind !== 'swimmer';
+    return s.state === 'drown';
   }
-  return rec(worlds);
-}
 
-function solveFrom(level, s0, rules = {}) {
-  let layer = new Map([[key(s0), { s: s0, plan: [] }]]);
-  for (let b = s0.breath; b < level.length; b++) {
-    const next = new Map();
-    for (const { s, plan } of layer.values()) {
-      for (const a of actions(level, s, rules)) {
-        const st = H.tick(level, a.st);
-        if (st.lost || st.caught > 0) continue;
-        const k = key(st);
-        const prev = next.get(k);
-        if (!prev || prev.s.passes < st.passes) next.set(k, { s: st, plan: plan.concat([{ b, ws: a.ws, sm: a.sm }]) });
+  // Aim where the swimmer will be when the ring lands; return the throw only if it actually catches them.
+  function aimAt(level, st, s) {
+    let x = s.x, y = s.y;
+    for (let it = 0; it < 3; it++) {
+      const fl = SW.RULES.flight(SW.dist(SW.TOWER, { x, y }));
+      const fut = advance(level, clone(st), fl);
+      const f = fut.swimmers[s.id];
+      x = f.x; y = f.y;
+    }
+    const trial = clone(st);
+    if (!SW.throwRing(trial, x, y)) return null;
+    let caught = false;
+    for (let i = 0; i < 40 && !trial.over; i++) {
+      SW.step(level, trial, DT);
+      if (trial.events.some(e => e.type === 'catch' && e.who === s.id)) { caught = true; break; }
+      if (trial.events.some(e => e.type === 'miss' || e.type === 'catch')) break;
+      trial.events.length = 0;
+    }
+    return caught ? { x, y } : null;
+  }
+
+  const deadline = s => s.trouble + s.struggle + s.drown;
+
+  function options(level, pol, st) {
+    const out = [];
+    if (SW.canThrow(st)) {
+      // a swimmer with a ring already on its way to them doesn't need a second one
+      const covered = s => st.rings.some(r => r.mode === 'flying' && SW.dist(r, s) <= SW.RULES.reachStruggle + 0.05);
+      const targets = st.swimmers.filter(s => SW.needsHelp(s) && known(pol, s, st) && !covered(s)).sort((a, b) => deadline(a) - deadline(b));
+      for (const s of targets) {
+        const aim = aimAt(level, st, s);
+        if (aim) out.push({ a: 'throw', who: s.id, x: aim.x, y: aim.y });
       }
     }
-    layer = next;
-    if (!layer.size) return { status: 'unsolvable' };
+    if (pol.call && SW.canCall(level, st)) out.push({ a: 'call' });
+    out.push({ a: 'wait' });
+    return out;
   }
-  for (const v of layer.values()) if (H.won(level, v.s)) return { status: 'solved', plan: v.plan };
-  return { status: 'unsolvable' };
-}
 
-// Worlds consistent with the opening view: each flower listed in level.hidden could be at either thirst
-// that shows the same bloom.
-function openingWorlds(level) {
-  if (level.alternatives) {
-    return level.alternatives.map(alt => { const w = H.init(level); for (const [i, t] of Object.entries(alt)) w.flowers[+i].t = t; return w; });
+  function key(pol, st) {
+    const q = v => (v === Infinity ? 'I' : v < -50 ? 'N' : Math.round(v / GRAIN));
+    const sw = st.swimmers.map(s => s.state[0] + s.state[1] + (s.state === 'drown' && known(pol, s, st) ? 'k' : '')).join('');
+    const rg = st.rings.map(r => r.mode[0] + q(r.t1) + (r.who >= 0 ? r.who : '')).join(',');
+    const C = st.captain;
+    return [q(st.t), sw, rg, C.mode[0], q(C.t0), q(C.trustUntil), C.schedule.length, st.strikes, q(st.whistle.ready)].join('|');
   }
-  const twins = { fold: { 1: [1, 9], 9: [1, 9], 2: [2, 8], 8: [2, 8], 4: [4, 7], 7: [4, 7] } };
-  let worlds = [H.init(level)];
-  for (const i of level.hidden || []) {
-    const f = level.flowers[i];
-    const alts = (twins[f.kind] || {})[f.t] || [f.t];
-    const nw = [];
-    for (const w of worlds) for (const t of alts) { const c = H.clone(w); c.flowers[i].t = t; nw.push(c); }
-    worlds = nw;
-  }
-  return worlds;
-}
 
-Object.assign(API, { solveBelief, solveFrom, openingWorlds, observe });
-if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.HushSolver = API;
+  function apply(level, st, o) {
+    if (o.a === 'throw') SW.throwRing(st, o.x, o.y);
+    else if (o.a === 'whistle') SW.blowWhistle(st);
+    else if (o.a === 'call') SW.callCaptain(level, st);
+  }
+
+  // Depth-first over decision points. Returns { plan, state } for the first winning line, or null.
+  function solve(level, policyName, opts) {
+    const pol = typeof policyName === 'string' ? POLICIES[policyName] : policyName;
+    const limit = (opts && opts.limit) || 3000000;
+    REACT = (opts && opts.react) || 0.3;
+    EVERY = (opts && opts.whistleEvery) || 0;
+    const seen = new Set();
+    let nodes = 0, aborted = false;
+    function dfs(st, plan) {
+      if (st.over) return st.over === 'won' ? { plan, state: st } : null;
+      if (++nodes > limit) { aborted = true; return null; }
+      const k = key(pol, st);
+      if (seen.has(k)) return null;
+      seen.add(k);
+      let routine = null;
+      if (pol.whistle && level.whistle !== false && SW.canWhistle(st) && st.t - st.whistle.t0 >= EVERY - 1e-9 && st.swimmers.some(ambiguous)) { SW.blowWhistle(st); st.events.length = 0; routine = { t: +st.t.toFixed(2), n: Math.round(st.t / DT), a: 'whistle', routine: true }; }
+      if (routine) plan = plan.concat([routine]);
+      for (const o of options(level, pol, st)) {
+        const next = clone(st);
+        if (o.a !== 'wait') { apply(level, next, o); next.events.length = 0; }
+        // after an action, look again at once (a second ring, a whistle then a throw); after waiting, move on
+        if (o.a === 'wait') advance(level, next, GRAIN);
+        else advance(level, next, DT);
+        const step = o.a === 'wait' ? null : { t: +st.t.toFixed(2), n: Math.round(st.t / DT), ...o };
+        const r = dfs(next, step ? plan.concat([step]) : plan);
+        if (r) return r;
+        if (aborted) return null;
+      }
+      return null;
+    }
+    const res = dfs(SW.init(level), []);
+    return { ok: !!res, plan: res ? res.plan : null, state: res ? res.state : null, nodes, aborted };
+  }
+
+  // Replay a plan through the plain rules (the same path the real game takes) and report the outcome.
+  function replay(level, plan) {
+    const st = SW.init(level);
+    let i = 0, n = 0;
+    const evs = [];
+    while (!st.over && st.t < level.length + 30) {
+      while (i < plan.length && plan[i].n <= n) { apply(level, st, plan[i]); i++; }
+      SW.step(level, st, DT); n++;
+      evs.push(...st.events.map(e => ({ t: +st.t.toFixed(2), ...e })));
+      st.events.length = 0;
+    }
+    return { over: st.over, score: st.score, saved: st.saved, stars: st.stars, strikes: st.strikes, events: evs, state: st };
+  }
+
+  const API = { solve, replay, POLICIES, known, ambiguous, DT, GRAIN, VISIBLE };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.SWSolver = API;
 })(typeof window !== 'undefined' ? window : globalThis);

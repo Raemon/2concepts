@@ -29,7 +29,10 @@ const Shell = (() => {
     el.dataset.active = '';
     const activate = () => { if (el.dataset.active) return; el.dataset.active = '1'; el.style.touchAction = 'none'; onActivate && onActivate(); };
     el.addEventListener('click', activate);
-    document.addEventListener('pointerdown', (e) => { if (!el.contains(e.target)) { el.dataset.active = ''; el.style.touchAction = 'pan-y'; onActivate && onActivate(false); } }, true);
+    const deactivate = () => { if (!el.dataset.active) return; el.dataset.active = ''; el.style.touchAction = 'pan-y'; onActivate && onActivate(false); };
+    document.addEventListener('pointerdown', (e) => { if (!el.contains(e.target)) deactivate(); }, true);
+    // inside a sandboxed iframe we can't see taps on the post around us, but the frame loses focus
+    window.addEventListener('blur', deactivate);
     return () => !!el.dataset.active;
   }
 
