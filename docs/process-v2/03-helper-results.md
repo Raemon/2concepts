@@ -436,3 +436,52 @@ and the check becomes a shield.
   immunity from the uncontrolled one. That's also the logic of controlled burns, the 2018 vote, and patent
   cleansing.
 - Medium-strong.
+
+---
+
+## Markets, accounting & auctions (35 structures; 1 survivor, 1 borderline)
+
+This helper got zero searches, but fetched two pages directly to check case facts.
+
+**Representative kills:**
+- Marking the close → banging the close.
+- Cheapest-to-deliver; queue rationing; notches.
+- Adjusting vs non-adjusting events → bitemporal data.
+- Circuit-breaker magnet → magnet effect / green paradox.
+- Dark pools drain discovery → Grossman–Stiglitz.
+- Treasury fails at zero rates → latent structural constraints.
+- Suspense accounts as hiding places → residual categories.
+- Stable NAV → peg crises.
+- Wrong-way risk.
+- Brent / Dow constituents → Ship of Theseus.
+
+**Survivor: Placeholder activation.** A mandate forces a slot to be filled by someone who doesn't want it used, so
+they fill it with a valid-looking value chosen to be *never used*. Genuine fillers vanish in exactly the failure
+states, so in those states automated systems execute the placeholder as if it were real.
+- *Cases:*
+  - May 2010 flash crash: Accenture at $0.01 and Sotheby's at about $100,000, both stub quotes posted to meet
+    market-maker obligations.
+  - Canada's 2011 Orange Wave: NDP paper candidates elected in Quebec; Brosseau was in Las Vegas.
+  - MaxMind's default IP location (a Kansas farm); the "NULL" licence plate collecting tickets. Both from memory.
+  - Ticket-balancing VPs who succeeded (Tyler, A. Johnson, Arthur).
+- *Moves:*
+  - List placeholders and test them in the state where genuine values disappear.
+  - Bound the allowed values, or provide an explicit decline channel.
+- *Surplus:*
+  - *Extreme by design:* "minimize the chance of use" pushes placeholders to the edge of the valid range, so the
+    damage on activation is the designed optimum.
+  - Activation is correlated (59 seats; eight S&P names at a penny).
+  - Automation raises the hazard.
+  - Stricter presence mandates produce more placeholders, raising measured robustness while lowering real
+    robustness.
+- *Nearest:* semipredicate problem / sentinel values / Null Island (CS); ceremonial decoupling; hidden failures.
+- *Helper's estimate:* 35–45%.
+
+**Borderline (probably killed): Fallback mismatch when a referent dies.** LIBOR, gold clauses, the euro,
+left-pad. Killed as common-cause failure.
+
+**My reaction.**
+- *Placeholder activation:* very good. It's vivid, with the flash crash and an absent MP. "Extreme by design" is
+  genuine surplus. And it's a different mechanism from the blind-instrument family: here the slot-filler is
+  *strategic*, choosing a value that maximizes the chance of non-use.
+- Risk: "sentinel values and in-band signalling" is the CS name for the mechanism. Medium-strong.
