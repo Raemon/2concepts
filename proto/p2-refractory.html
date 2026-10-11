@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P2 refractory capture</title>
+<style>html,body{margin:0;background:#101418;color:#dde;font:14px system-ui}#c{display:block;width:100%;touch-action:none}#hud{padding:6px 10px}</style></head>
+<body><div id="hud">Drag the fox. Grab a hen (dirty) and bring it home. A hound that sniffs you while clean clears you for 4s. <span id="s"></span></div><canvas id="c"></canvas>
+<script>
+// Prototype 2: a check that grants immunity once passed can be captured by the checked party.
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H;
+function fit(){W=c.clientWidth;H=Math.round(W*0.9);c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
+addEventListener('resize',fit);fit();
+let fox,hounds,hens,score,over,target;
+function reset(){fox={x:.1,y:.9,carry:false,clear:0};target={x:.1,y:.9};hounds=[0,1,2].map(i=>({x:.3+.25*i,y:.4,a:Math.random()*6,sniff:0}));hens=[];for(let i=0;i<5;i++)hens.push({x:.6+Math.random()*.3,y:.1+Math.random()*.3});score=0;over=false}
+reset();
+c.addEventListener('pointerdown',e=>{if(over){reset();return}mv(e)});c.addEventListener('pointermove',e=>{if(e.buttons)mv(e)});
+function mv(e){const b=c.getBoundingClientRect();target={x:(e.clientX-b.left)/W,y:(e.clientY-b.top)/H}}
+let last=performance.now();
+function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+ if(!over){const dx=target.x-fox.x,dy=target.y-fox.y,dd=Math.hypot(dx,dy);const sp=.28*dt;if(dd>.005){fox.x+=dx/dd*Math.min(sp,dd);fox.y+=dy/dd*Math.min(sp,dd)}
+  fox.clear=Math.max(0,fox.clear-dt);
+  for(const h of hounds){const hx=fox.x-h.x,hy=fox.y-h.y,hd=Math.hypot(hx,hy);
+   if(fox.clear>0||hd>.3){h.a+=(Math.random()-.5)*2*dt;h.x+=Math.cos(h.a)*.08*dt;h.y+=Math.sin(h.a)*.08*dt}
+   else{h.x+=hx/hd*.2*dt;h.y+=hy/hd*.2*dt}
+   h.x=Math.min(.95,Math.max(.05,h.x));h.y=Math.min(.95,Math.max(.05,h.y));
+   if(hd<.05&&fox.clear<=0){if(fox.carry){over=true}else{fox.clear=4}}}
+  for(let i=hens.length-1;i>=0;i--){const n=hens[i];if(!fox.carry&&Math.hypot(n.x-fox.x,n.y-fox.y)<.05){fox.carry=true;hens.splice(i,1)}}
+  if(fox.carry&&Math.hypot(fox.x-.1,fox.y-.9)<.08){fox.carry=false;score++;hens.push({x:.6+Math.random()*.3,y:.1+Math.random()*.3})}}
+ x.fillStyle='#101418';x.fillRect(0,0,W,H);
+ x.fillStyle='#2a3a2a';x.beginPath();x.arc(.1*W,.9*H,.08*W,0,7);x.fill();
+ for(const n of hens){x.fillStyle='#f5e6b0';x.beginPath();x.arc(n.x*W,n.y*H,.02*W,0,7);x.fill()}
+ for(const h of hounds){x.fillStyle='#8a7f72';x.beginPath();x.arc(h.x*W,h.y*H,.03*W,0,7);x.fill();x.strokeStyle='rgba(200,180,150,.15)';x.beginPath();x.arc(h.x*W,h.y*H,.3*W,0,7);x.stroke()}
+ x.fillStyle=fox.carry?'#ff7a3a':'#e8a050';x.beginPath();x.arc(fox.x*W,fox.y*H,.028*W,0,7);x.fill();
+ if(fox.clear>0){x.strokeStyle=`rgba(120,220,255,${.4+.4*Math.sin(now/100)})`;x.lineWidth=3;x.beginPath();x.arc(fox.x*W,fox.y*H,.05*W,0,7*fox.clear/4);x.stroke()}
+ document.getElementById('s').textContent=over?`CAUGHT. score ${score} — tap to retry`:`score ${score}${fox.clear>0?' · CLEARED '+fox.clear.toFixed(1):''}`;
+ requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script></body></html>

@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P1 fold-back triage</title>
+<style>html,body{margin:0;background:#0b1020;color:#cfe;font:14px system-ui}#c{display:block;width:100%;touch-action:none}#hud{padding:6px 10px}</style></head>
+<body><div id="hud">Tap a flower to water it. <span id="s"></span></div><canvas id="c"></canvas>
+<script>
+// Prototype 1: thirst rises; a flower's bloom (signal) rises with thirst, then folds back as it wilts.
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H;
+function fit(){W=c.clientWidth;H=Math.round(W*0.9);c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
+addEventListener('resize',fit);fit();
+const PEAK=0.55;const sig=d=>d<PEAK?d/PEAK:Math.max(0,(1-d)/(1-PEAK));
+let F=[],charges=3,t=0,alive=0;
+function reset(){F=[];const n=9;for(let i=0;i<n;i++){F.push({x:0.18+0.32*(i%3)+(Math.random()-.5)*.08,y:0.2+0.3*Math.floor(i/3)+(Math.random()-.5)*.08,d:Math.random()*0.3,r:0.018+Math.random()*0.03,dead:false,flash:0})}t=0;charges=3}
+reset();
+c.addEventListener('pointerdown',e=>{const b=c.getBoundingClientRect(),px=(e.clientX-b.left)/W,py=(e.clientY-b.top)/H;let best=null,bd=1e9;for(const f of F){const dd=(f.x-px)**2+(f.y-py)**2;if(dd<bd){bd=dd;best=f}}if(best&&bd<0.02&&charges>=1&&!best.dead){charges-=1;best.d=Math.max(0,best.d-0.35);best.flash=1}});
+let last=performance.now();
+function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;t+=dt;charges=Math.min(3,charges+dt/1.2);
+ for(const f of F){if(f.dead)continue;f.d+=f.r*dt;if(f.d>=1){f.dead=true}f.flash=Math.max(0,f.flash-dt*2)}
+ x.fillStyle='#0b1020';x.fillRect(0,0,W,H);
+ for(const f of F){const cx=f.x*W,cy=f.y*H,R=W*0.09;const s=f.dead?0:sig(f.d);
+  // pad
+  x.fillStyle='#14304a';x.beginPath();x.ellipse(cx,cy+R*0.35,R*1.1,R*0.45,0,0,7);x.fill();
+  if(f.dead){x.fillStyle='#333';x.beginPath();x.arc(cx,cy,R*0.25,0,7);x.fill();continue}
+  // glow
+  const g=x.createRadialGradient(cx,cy,0,cx,cy,R*2);g.addColorStop(0,`rgba(255,${120+80*s},${200},${0.45*s})`);g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.beginPath();x.arc(cx,cy,R*2,0,7);x.fill();
+  // petals: openness = signal
+  const n=8;for(let k=0;k<n;k++){const a=k/n*Math.PI*2;const open=0.15+0.85*s;x.save();x.translate(cx,cy);x.rotate(a);x.scale(1,open);x.fillStyle=`hsl(${330-40*s},${30+60*s}%,${35+35*s}%)`;x.beginPath();x.ellipse(0,-R*0.5,R*0.22,R*0.5,0,0,7);x.fill();x.restore()}
+  if(f.flash>0){x.strokeStyle=`rgba(150,220,255,${f.flash})`;x.lineWidth=3;x.beginPath();x.arc(cx,cy,R*(1.6-f.flash*0.6),0,7);x.stroke()}
+ }
+ alive=F.filter(f=>!f.dead).length;document.getElementById('s').textContent=`alive ${alive}/9 · water ${charges.toFixed(1)} · ${t.toFixed(0)}s`;
+ requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script></body></html>
