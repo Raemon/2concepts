@@ -526,3 +526,44 @@ would leave a mark: a canary, a fake town, a decoy).
 - *Non-exposure certificate:* useful, and timely for AI evals, but it's a taxonomy. Medium-weak as a "new way of
   thinking".
 - *Appreciating evidence:* weak.
+
+---
+
+## Military, intelligence & security tradecraft (44 structures; 1 qualified survivor)
+
+This helper got zero searches. It notes "the seed domain is unusually well theorized".
+
+**Representative kills:**
+- Rationing Ultra → Aumann–Maschler / DP budget.
+- Mincemeat → Deception Maxim 10.
+- Glomar → pooling.
+- Rare privacy tools identify users → "Anonymity loves company".
+- Monitors attract infiltrators → quis custodiet.
+- Evasion becomes the signal → zig-zag model (plant immunity).
+- Covert production bottlenecked by waste (Great Escape spoil, Kr-85) → mass balance / MASINT. The closest
+  runner-up.
+- FUSAG → Beau Geste hypothesis.
+- Too-coherent stories → CBCA.
+- Pocket litter → Barthes' reality effect.
+
+**Survivor (qualified): Upkeep-dependent ("held-open") concealment.** Some hidden states are processes, held away
+from their natural visible state by an operator's continuous work. So the decisive test is to interrupt the
+operator, across the whole upkeep group, rather than inspect the output.
+- *Cases:* Rita Crundwell ($53M, exposed during her vacation); Kerviel took no leave; Olympus tobashi broken by an
+  outsider CEO; Greece's deficit revised after the 2009 change of government; 1MDB after Najib fell; rootkits vs
+  offline-boot detection; Clever Hans; HIV "shock and kill".
+- *Moves:*
+  - Match the interruption to the suspected group: solo → enforced absence; coalition → replace everyone at once.
+  - Treat involuntary breaks (deaths, elections, reboots) as expiring audit windows.
+- *Surplus:*
+  - Concealers face a tradeoff between solo upkeep (breaks on interruption) and shared upkeep (breaks on
+    defection).
+  - So durable concealments are small-group, inside bodies that never turn over all at once.
+  - Rational concealers migrate to passive, built-in concealment (defeat devices).
+- *Nearest:* mandatory vacation; "big bath" after CEO change; Grimes 2016 on conspiracy leakage.
+- *Helper's estimate:* about 35%.
+
+**My reaction.** The core is "mandatory vacation, generalized". The more general lens, *held-open states* (states
+that exist only while someone keeps doing work), reaches beyond concealment: polders and pumps, abandoned mines
+flooding, Ponzi schemes, the "Bob does X every day" system. But in physics that general version is dissipative
+structure / homeostasis. Medium-weak.
