@@ -386,3 +386,53 @@ named as "the vanishing zero" in 1970s food law. Weak.
   Dunning–Kruger for instruments". Also, the hook effect is literally named.
 - It belongs to the same "blind where it matters" family as the settledness trap, all-clear, remedy–signature and
   open top bracket.
+
+---
+
+## Procedure of old institutions (about 40 structures; 1 survivor)
+
+This helper got zero searches, so everything is from memory.
+
+**Representative kills:**
+- Only a winner may move to reconsider → "Nixon goes to China".
+- Tabling → negative agenda control.
+- Conclave fallback → reversion point.
+- Juniors vote first → cascades.
+- Lechatchila/bedieved → conduct vs decision rules.
+- Doubt-shield (kim li, probabilism, qualified immunity's "clearly established") → laxism / manufactured doubt.
+  A near-miss.
+- Conditional re-performance → ex abundanti cautela. A near-miss.
+- Walking quorum, constructive abstention, Sybil resistance, structuring, grandfathering, IIA: all named.
+
+**Survivor: Refractory-check capture.** Some accountability checks grant immunity once survived (a cooldown, bar or
+preclusion). The checked party then gains by *running the check on itself*, choosing timing, challenger or forum,
+and the check becomes a shield.
+- *Cases:*
+  - John Major's 1995 "put up or shut up" leadership contest.
+  - Tory rules since 1998: a survived confidence vote buys 12 months, so May was protected in Dec 2018.
+  - NLRA 12-month election bar and sweetheart contract bars.
+  - Class-action reverse auctions buying class-wide preclusion.
+  - Leipzig trials of 1921 forestalling extradition; Rome Statute art. 17 "shielding".
+  - USPTO supplemental examination cleansing inequitable conduct.
+  - Tabling the motion to reconsider immediately.
+  - Whole Foods' weak proxy-access proposal used to exclude a stronger one.
+- *Moves:*
+  - Designers should scale immunity to how adversarial the test was.
+  - Challengers should treat a failed weak challenge as a gift to the target, and hold allies until a winning
+    coalition is committed.
+  - Read "bring it on" as the target's own estimate that conditions favour it.
+- *Surplus:*
+  - Accountability becomes bimodal: long quiet spells, then overwhelming strikes through channels the bar doesn't
+    cover. Johnson survived June 2022 and fell in July to mass cabinet resignations.
+  - Anti-sham doctrine elaborates in proportion to bar length.
+- *Nearest:* collusive-suit doctrine; sham-prosecution exception; election "surfing"; stealing thunder;
+  inoculation theory; controlled burns as a physical analogue.
+- *Helper's estimate:* about 50/50.
+
+**My reaction.**
+- Important because it's *outside* the "blind instrument" attractor. It's a strategic concept about timing and
+  self-administered tests, with excellent cases and real surplus (bimodality).
+- It has the shape of *self-vaccination against accountability*: a controlled exposure on your own terms buys
+  immunity from the uncontrolled one. That's also the logic of controlled burns, the 2018 vote, and patent
+  cleansing.
+- Medium-strong.
