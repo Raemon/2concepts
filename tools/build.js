@@ -17,7 +17,7 @@ if (process.argv.includes('--page')) {
     .replace(/<meta charset="utf-8">\s*<meta name="viewport"[^>]*>/i, '')
     .replace(/<\/head>\s*<body>/i, '')
     .replace(/<\/body>\s*<\/html>\s*$/i, '')
-    .replace('</style>', `  :root { background: var(--frame); }
+    .replace('</style>', `  :root { background: var(--frame); color-scheme: dark; }
   body { padding-inline: 16px; padding-block: 16px 28px; }
 </style>`);
   fs.writeFileSync(path.join(__dirname, '../dist/still-water-page.html'), page.trim() + '\n');
